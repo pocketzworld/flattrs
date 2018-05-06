@@ -206,7 +206,6 @@ cdef class Builder(object):
     """
 
     ## @cond FLATBUFFERS_INTENRAL
-    #cdef Bytes
     cdef unsigned char* buffer
     cdef Py_ssize_t buffer_length
     cdef uint64_t* current_vtable
@@ -235,8 +234,9 @@ cdef class Builder(object):
         if not (0 <= initialSize <= MAX_BUFFER_SIZE):
             msg = "flatbuffers: Cannot create Builder larger than 2 gigabytes."
             raise BuilderSizeError(msg)
-        #self.Bytes = bytearray(initialSize)
         self.buffer = <unsigned char*> PyMem_Malloc(sizeof(unsigned char) * initialSize)
+        if self.buffer is NULL:
+            raise MemoryError()
         self.buffer_length = initialSize
         ## @cond FLATBUFFERS_INTERNAL
         self.current_vtable = NULL
@@ -251,6 +251,10 @@ cdef class Builder(object):
 
     def __dealloc__(self):
         PyMem_Free(self.buffer)
+        if self.current_vtable != NULL:
+            PyMem_Free(self.current_vtable)
+            self.current_vtable = NULL
+            self.current_vtable_length = 0
 
     def Output(self):
         """Return the portion of the buffer that has been used for writing data.
@@ -277,10 +281,11 @@ cdef class Builder(object):
 
         self.assertNotNested()
 
-        # use 32-bit offsets so that arithmetic doesn't overflow.
-        #self.current_vtable = [0] * numfields
-        self.current_vtable = <uint64_t *>PyMem_Malloc(sizeof(uint64_t) * numfields)
-        memset(self.current_vtable, 0, sizeof(uint64_t) * numfields)
+        if numfields > 0:
+            self.current_vtable = <uint64_t *>PyMem_Malloc(sizeof(uint64_t) * numfields)
+            if self.current_vtable is NULL:
+                raise MemoryError()
+            memset(self.current_vtable, 0, sizeof(uint64_t) * numfields)
         self.current_vtable_length = numfields
         self.objectEnd = self.Offset()
         self.minalign = 1
@@ -376,7 +381,7 @@ cdef class Builder(object):
         self.nested = False
         return self.WriteVtable()
 
-    cdef growByteBuffer(self):
+    cdef void growByteBuffer(self):
         """Doubles the size of the byteslice, and copies the old data towards
            the end of the new buffer (since we build the buffer backwards)."""
         cdef Py_ssize_t newSize
