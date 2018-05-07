@@ -146,7 +146,7 @@ def _make_fb_functions(cl):
 
 
 def model_to_bytes(inst, builder: Optional[Builder]=None) -> bytes:
-    builder = Builder(50000) if builder is None else builder
+    builder = Builder(10000) if builder is None else builder
     strings, byte_items, fb_items = inst.__fb_nonnestables__()
     string_offsets = {s: builder.CreateString(s) for s in strings}
     node_offsets = {id(bi): builder.CreateString(bi) for bi in byte_items}

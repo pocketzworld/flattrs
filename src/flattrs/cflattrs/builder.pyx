@@ -324,9 +324,10 @@ cdef class Builder(object):
 
         # Trim trailing 0 offsets.
         effective_vtable_length = 0
-        for i in range(self.current_vtable_length-1, 0, -1):
-            if self.current_vtable[i] != 0:
-                effective_vtable_length = i + 1
+        for i in range(self.current_vtable_length, 0, -1):
+            if self.current_vtable[i-1] != 0:
+                effective_vtable_length = i
+                break
 
         # Search backwards through existing vtables, because similar vtables
         # are likely to have been recently appended. See
@@ -514,7 +515,6 @@ cdef class Builder(object):
         ## @cond FLATBUFFERS_INTERNAL
         self.head = self.head - l
         ## @endcond
-        #self.Bytes[self.head:self.head+l] = x
 
         cdef char* c_string = x
 
@@ -579,6 +579,8 @@ cdef class Builder(object):
 
         """
         self.assertNested()
+        if slotnum >= self.current_vtable_length:
+            raise IndexError()
         self.current_vtable[slotnum] = self.Offset()
     ## @endcond
 

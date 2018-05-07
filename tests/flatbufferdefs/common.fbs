@@ -1,0 +1,7 @@
+namespace flattrs_test;
+
+table Common1 {
+    id:string (required);
+    aSmallInt:uint8;
+    aBigInt:int32;
+}
