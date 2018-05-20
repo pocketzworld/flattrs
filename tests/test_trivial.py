@@ -11,7 +11,7 @@ from hypothesis.strategies import (
     floats,
 )
 
-from flattrs import model_from_bytes, model_to_bytes
+from flattr import model_from_bytes, model_to_bytes
 
 from .models import (
     JustAString,

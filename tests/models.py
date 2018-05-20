@@ -3,7 +3,7 @@ from typing import List, Optional, Union
 
 import attr
 
-from flattrs import UNION_CL, Flatbuffer, FlatbufferEnum
+from flattr import UNION_CL, Flatbuffer, FlatbufferEnum
 
 from tests.fbs.clothing.ClothingEntity import ClothingEntity
 from tests.fbs.clothing.ClothingEntityList import ClothingEntityList
@@ -13,18 +13,34 @@ from tests.fbs.inbox.Conversation import Conversation
 from tests.fbs.inbox.ConversationType import ConversationType
 from tests.fbs.inbox.Message import Message
 from tests.fbs.inbox.MessageType import MessageType
-from tests.fbs.networking.socket.inbox.GetConversationsResponse import GetConversationsResponse
-from tests.fbs.networking.socket.inbox.GetMessagesResponse import GetMessagesResponse
-from tests.fbs.networking.socket.inbox.SendMessageRequest import SendMessageRequest
-from tests.fbs.networking.socket.inbox.SendMessageResponse import SendMessageResponse
-from tests.fbs.networking.socket.inbox.ConversationUpdateResponse import ConversationUpdateResponse
+from tests.fbs.networking.socket.inbox.GetConversationsResponse import (
+    GetConversationsResponse
+)
+from tests.fbs.networking.socket.inbox.GetMessagesResponse import (
+    GetMessagesResponse
+)
+from tests.fbs.networking.socket.inbox.SendMessageRequest import (
+    SendMessageRequest
+)
+from tests.fbs.networking.socket.inbox.SendMessageResponse import (
+    SendMessageResponse
+)
+from tests.fbs.networking.socket.inbox.ConversationUpdateResponse import (
+    ConversationUpdateResponse
+)
 from tests.fbs.networking.socket.inbox.ServerContent import ServerContent
 from tests.fbs.networking.socket.inbox.AnyServerContent import AnyServerContent
 from tests.fbs.networking.socket.inbox.ClientContent import ClientContent
 from tests.fbs.networking.socket.inbox.AnyClientContent import AnyClientContent
-from tests.fbs.networking.socket.inbox.ConversationUpdateRequest import ConversationUpdateRequest
-from tests.fbs.networking.socket.inbox.GetConversationsRequest import GetConversationsRequest
-from tests.fbs.networking.socket.inbox.GetMessagesRequest import GetMessagesRequest
+from tests.fbs.networking.socket.inbox.ConversationUpdateRequest import (
+    ConversationUpdateRequest
+)
+from tests.fbs.networking.socket.inbox.GetConversationsRequest import (
+    GetConversationsRequest
+)
+from tests.fbs.networking.socket.inbox.GetMessagesRequest import (
+    GetMessagesRequest
+)
 from tests.flattrs_test.JustAFloat import JustAFloat
 from tests.flattrs_test.JustADouble import JustADouble
 from tests.flattrs_test.JustAString import JustAString
@@ -216,15 +232,13 @@ class SendMessageResponse:
 
 
 @Flatbuffer(ServerContent)
-class ServerContent():
+class ServerContent:
     content: Union[
         ConversationUpdateResponse,
         GetConversationsResponse,
         GetMessagesResponse,
         SendMessageResponse,
-    ] = attr.ib(
-        metadata={UNION_CL: AnyServerContent}
-    )
+    ] = attr.ib(metadata={UNION_CL: AnyServerContent})
 
 
 @Flatbuffer(ConversationUpdateRequest)
@@ -250,12 +264,10 @@ class SendMessageRequest:
 
 
 @Flatbuffer(ClientContent)
-class ClientContent():
+class ClientContent:
     content: Union[
         ConversationUpdateRequest,
         GetConversationsRequest,
         GetMessagesRequest,
         SendMessageRequest,
-    ] = attr.ib(
-        metadata={UNION_CL: AnyClientContent}
-    )
+    ] = attr.ib(metadata={UNION_CL: AnyClientContent})

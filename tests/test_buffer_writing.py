@@ -1,4 +1,4 @@
-from flattrs.cflattrs.builder import (
+from flattr.cflattr.builder import (
     writeBool,
     writeUint8,
     writeUint16,

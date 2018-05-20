@@ -7,7 +7,7 @@ from typing import Any, Callable, List, Set, Optional, Type, Tuple, Union
 import attr
 from attr import fields, has
 try:
-    from .cflattrs.builder import Builder
+    from .cflattr.builder import Builder
 except ImportError:
     from flatbuffers.builder import Builder
 

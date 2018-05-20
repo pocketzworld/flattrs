@@ -3,7 +3,7 @@ from flatbuffers.builder import Builder as CanonicalBuilder
 from hypothesis import given
 from hypothesis.strategies import composite, text, integers
 
-from flattrs import model_from_bytes, model_to_bytes
+from flattr import model_from_bytes, model_to_bytes
 
 from .models import Common1
 from .strats import uint8s, int32s

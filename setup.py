@@ -10,7 +10,7 @@ setup(
     dependency_links=[
         "git+https://github.com/google/flatbuffers@v1.9.0#egg=flatbuffers-20180424161048&subdirectory=python"
     ],
-    ext_modules=cythonize("src/flattrs/cflattrs/*.pyx", annotate=True),
+    ext_modules=cythonize("src/flattr/cflattr/*.pyx", annotate=True),
     zip_safe=False,
     extras_require={"dev": ["pytest", "hypothesis"]},
 )
