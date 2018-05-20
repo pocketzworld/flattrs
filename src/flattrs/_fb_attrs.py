@@ -62,6 +62,7 @@ def _make_fb_functions(cl):
     optional_strings = []
     byte_fields = []
     tables = []
+    optional_tables = []
     lists_of_tables = []
     lists_of_strings = []
     enums = []
@@ -81,6 +82,12 @@ def _make_fb_functions(cl):
                 # This is an optional field.
                 if union_args[0] is str:
                     optional_strings.append(field.name)
+                elif has(union_args[0]):
+                    optional_tables.append(field.name)
+                elif issubclass(union_args[0], IntEnum):
+                    raise ValueError(
+                        "Flatbuffers don't support optional enums."
+                    )
             else:
                 unions.append(
                     (field.name, type.__args__, field.metadata[UNION_CL])
@@ -105,6 +112,7 @@ def _make_fb_functions(cl):
             optional_strings,
             byte_fields,
             tables,
+            optional_tables,
             lists_of_tables,
             lists_of_strings,
             unions,
@@ -120,6 +128,7 @@ def _make_fb_functions(cl):
             optional_strings,
             byte_fields,
             tables,
+            optional_tables,
             lists_of_tables,
             lists_of_strings,
             inlines + enums,
@@ -137,6 +146,7 @@ def _make_fb_functions(cl):
             optional_strings,
             enums,
             tables,
+            optional_tables,
             lists_of_tables,
             lists_of_strings,
             unions,
@@ -194,6 +204,7 @@ def _make_nonnestables_fn(
     optional_strings: List[str],
     byte_fields: List[str],
     table_fields: List[str],
+    optional_tables: List[str],
     lists_of_tables: List[Tuple[str, Type]],
     lists_of_strings: List[str],
     unions: List[Tuple[str, List[Type], Type]],
@@ -244,6 +255,15 @@ def _make_nonnestables_fn(
         lines.append(f"    byte_items.extend({table_field}_byte_items)")
         lines.append(f"    fb_items.extend({table_field}_items)")
 
+    for table_field in optional_tables:
+        lines.append(f"    if self.{table_field} is not None:")
+        lines.append(
+            f"        {table_field}_strs, {table_field}_byte_items, {table_field}_items = self.{table_field}.__fb_nonnestables__()"
+        )
+        lines.append(f"        strings |= {table_field}_strs")
+        lines.append(f"        byte_items.extend({table_field}_byte_items)")
+        lines.append(f"        fb_items.extend({table_field}_items)")
+
     for field, _ in lists_of_tables:
         norm_field_name = f"{field[0].upper()}{field[1:]}"
         globs[f"{field}VectorStart"] = getattr(
@@ -286,6 +306,7 @@ def _make_add_to_builder_fn(
     optional_strings: List[str],
     byte_fields: List[str],
     table_fields: List[str],
+    optional_tables: List[str],
     lists_of_tables: List[Tuple[str, Type]],
     lists_of_strings: List[str],
     inlines: List[str],
@@ -332,6 +353,16 @@ def _make_add_to_builder_fn(
         globs[field_starter_name] = field_start
         lines.append(
             f"    {field_starter_name}(builder, nodes[id(self.{field})])"
+        )
+
+    for field in optional_tables:
+        norm_field_name = f"{field[0].upper()}{field[1:]}"
+        field_starter_name = f"{name}Add{norm_field_name}"
+        field_start = getattr(mod, field_starter_name)
+        globs[field_starter_name] = field_start
+        lines.append(f"    if self.{field} is not None:")
+        lines.append(
+            f"        {field_starter_name}(builder, nodes[id(self.{field})])"
         )
 
     for field in inlines:
@@ -408,6 +439,7 @@ def _make_from_fb_fn(
     optional_strings: List[str],
     enum_fields: List[str],
     table_fields: List[str],
+    optional_tables: List[str],
     lists_of_tables: List[Tuple[str, Type]],
     lists_of_strings: List[str],
     union_fields: List[Tuple[str, List[Type], Type]],
@@ -431,7 +463,7 @@ def _make_from_fb_fn(
             lines.append(
                 f"        fb_instance.{norm_field_name}().decode('utf8'),"
             )
-        if fname in optional_strings:
+        elif fname in optional_strings:
             lines.append(
                 f"        fb_instance.{norm_field_name}().decode('utf8') if fb_instance.{norm_field_name}() != b'' else None,"
             )
@@ -446,6 +478,13 @@ def _make_from_fb_fn(
             globs[table_name] = field.type
             lines.append(
                 f"        {table_name}.{from_fb}(fb_instance.{norm_field_name}()),"
+            )
+        elif fname in optional_tables:
+            cl = field.type.__args__[0]
+            table_name = cl.__name__
+            globs[table_name] = cl
+            lines.append(
+                f"        {table_name}.{from_fb}(fb_instance.{norm_field_name}()) if fb_instance.{norm_field_name}() is not None else None,"
             )
         elif fname in table_field_names:
             type = table_field_names[fname]
@@ -491,6 +530,8 @@ def _make_from_fb_fn(
             lines.append(
                 f"    {dn}[fb_instance.{norm_field_name}Type()](fb_instance.{norm_field_name}())"
             )
+        else:
+            raise ValueError(f"Can't handle {fname} (type {field.type}).")
 
     lines.append("    )")
     lines.append("")
