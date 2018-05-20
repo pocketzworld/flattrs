@@ -316,12 +316,13 @@ def _make_add_to_builder_fn(
         lines.append(f"    __fb_self_{field}_offset = builder.EndVector(len(__fb_self_{field}))")
 
     lines.append(f"    builder.StartObject({num_slots})")
+
     for field in string_fields:
         norm_field_name = f"{field[0].upper()}{field[1:]}"
         field_starter_name = f"{name}Add{norm_field_name}"
         field_start = getattr(mod, field_starter_name)
-        globs[field_starter_name] = field_start
-        lines.append(f"    {field_starter_name}(builder, strs[__fb_self_{field}])")
+        slot_num, default = _get_offsets_for_string(field_start)
+        lines.append(f"    builder.PrependUOffsetTRelativeSlot({slot_num}, strs[__fb_self_{field}], {default})")
 
     for field in optional_strings:
         norm_field_name = f"{field[0].upper()}{field[1:]}"
@@ -552,3 +553,17 @@ def _get_num_slots(fn) -> int:
     d = DummyBuilder()
     fn(d)
     return d.slot_num
+
+
+def _get_offsets_for_string(fn) -> Tuple[int, int]:
+    sentinel = 1024
+
+    class DummyBuilder:
+        def PrependUOffsetTRelativeSlot(self, slot_num, offset, default):
+            if offset is not sentinel:
+                raise ValueError("Failed extracting parameters.")
+            self.slot_num = slot_num
+            self.default = default
+    d = DummyBuilder()
+    fn(d, sentinel)
+    return d.slot_num, d.default
