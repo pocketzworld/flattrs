@@ -157,8 +157,8 @@ def _make_fb_functions(cl):
 
 def model_to_bytes(inst, builder: Optional[Builder]=None) -> bytes:
     builder = Builder(10000) if builder is None else builder
-    strings, byte_items, fb_items = inst.__fb_nonnestables__()
-    string_offsets = {s: builder.CreateString(s) for s in strings}
+    byte_items, fb_items = inst.__fb_nonnestables__()
+    string_offsets = {}
     node_offsets = {id(bi): builder.CreateString(bi) for bi in byte_items}
 
     for fb_item, fb_type, fb_vec_start in fb_items:
@@ -167,12 +167,6 @@ def model_to_bytes(inst, builder: Optional[Builder]=None) -> bytes:
             fb_vec_start(builder, len(fb_item))
             for item in reversed(fb_item):
                 builder.PrependUOffsetTRelative(node_offsets[id(item)])
-            offset = builder.EndVector(len(fb_item))
-            node_offsets[id(fb_item)] = offset
-        elif fb_type is FBItemType.VECTOR_OF_STRINGS:
-            fb_vec_start(builder, len(fb_item))
-            for item in reversed(fb_item):
-                builder.PrependUOffsetTRelative(string_offsets[item])
             offset = builder.EndVector(len(fb_item))
             node_offsets[id(fb_item)] = offset
         else:
@@ -192,7 +186,6 @@ def model_from_bytes(cl, payload):
 class FBItemType(str, Enum):
     TABLE = "table"
     VECTOR = "vector"
-    VECTOR_OF_STRINGS = "vector_of_strings"
 
 
 FBItem = Tuple[Any, FBItemType, Callable]
@@ -214,53 +207,28 @@ def _make_nonnestables_fn(
     globs = {
         "FBTable": FBItemType.TABLE,
         "FBVector": FBItemType.VECTOR,
-        "FBVectorStrings": FBItemType.VECTOR_OF_STRINGS,
     }
     lines = []
     lines.append("def __fb_nonnestables__(self):")
 
-    if string_fields:
-        lines.append("    strings = {")
-        for string_field in string_fields:
-            lines.append(f"        self.{string_field},")
-        lines.append("    }")
-    else:
-        lines.append("    strings = set()")
-
     lines.append("    byte_items = []")
     lines.append("    fb_items = []")
-
-    for string_field in optional_strings:
-        lines.append(f"    if self.{string_field} is not None:")
-        lines.append(f"        strings.add(self.{string_field})")
-
-    for field in lists_of_strings:
-        lines.append(f"    strings |= set(self.{field})")
-        norm_field_name = f"{field[0].upper()}{field[1:]}"
-        globs[f"{field}VectorStart"] = getattr(
-            mod, f"{cl.__name__}Start{norm_field_name}Vector"
-        )
-        lines.append(
-            f"    fb_items.append((self.{field}, FBVectorStrings, {field}VectorStart))"
-        )
 
     for byte_field in byte_fields:
         lines.append(f"    byte_items.append(self.{byte_field})")
 
     for table_field in table_fields + [u[0] for u in unions]:
         lines.append(
-            f"    {table_field}_strs, {table_field}_byte_items, {table_field}_items = self.{table_field}.__fb_nonnestables__()"
+            f"    {table_field}_byte_items, {table_field}_items = self.{table_field}.__fb_nonnestables__()"
         )
-        lines.append(f"    strings |= {table_field}_strs")
         lines.append(f"    byte_items.extend({table_field}_byte_items)")
         lines.append(f"    fb_items.extend({table_field}_items)")
 
     for table_field in optional_tables:
         lines.append(f"    if self.{table_field} is not None:")
         lines.append(
-            f"        {table_field}_strs, {table_field}_byte_items, {table_field}_items = self.{table_field}.__fb_nonnestables__()"
+            f"        {table_field}_byte_items, {table_field}_items = self.{table_field}.__fb_nonnestables__()"
         )
-        lines.append(f"        strings |= {table_field}_strs")
         lines.append(f"        byte_items.extend({table_field}_byte_items)")
         lines.append(f"        fb_items.extend({table_field}_items)")
 
@@ -273,9 +241,8 @@ def _make_nonnestables_fn(
         lines.append(f"    {field}_items = self.{field}")
         lines.append(f"    for item in {field}_items:")
         lines.append(
-            f"        i_strs, i_bs, i_is = item.__fb_nonnestables__()"
+            f"        i_bs, i_is = item.__fb_nonnestables__()"
         )
-        lines.append(f"        strings |= i_strs")
         lines.append(f"        byte_items.extend(i_bs)")
         lines.append(f"        fb_items.extend(i_is)")
         lines.append(f"    vec_start = {field}VectorStart")
@@ -285,7 +252,7 @@ def _make_nonnestables_fn(
 
     lines.append("    fb_items.append((self, FBTable, None))")
 
-    lines.append("    return (strings, byte_items, fb_items)")
+    lines.append("    return (byte_items, fb_items)")
 
     sha1 = hashlib.sha1()
     sha1.update(name.encode("utf-8"))
@@ -319,22 +286,51 @@ def _make_add_to_builder_fn(
     globs = {}
     lines = []
     lines.append("def __fb_add_to_builder__(self, builder, strs, nodes):")
+
+    for field in string_fields:
+        lines.append(f"    __fb_self_{field} = self.{field}")
+        lines.append(f"    if __fb_self_{field} not in strs:")
+        lines.append(f"        strs[__fb_self_{field}] = builder.CreateString(__fb_self_{field})")
+
+    for field in optional_strings:
+        lines.append(f"    __fb_self_{field} = self.{field}")
+        lines.append(f"    if __fb_self_{field} is not None and __fb_self_{field} not in strs:")
+        lines.append(f"        strs[__fb_self_{field}] = builder.CreateString(__fb_self_{field})")
+
+    for field in lists_of_strings:
+        norm_field_name = f"{field[0].upper()}{field[1:]}"
+        globs[f"{field}StartVector"] = getattr(mod, f'{cl.__name__}Start{norm_field_name}Vector')
+
+        lines.append(f"    __fb_self_{field} = self.{field}")
+        lines.append(f"    __fb_self_{field}_offsets = []")
+        lines.append(f"    for e in __fb_self_{field}:")
+        lines.append(f"        if e in strs:")
+        lines.append(f"            __fb_self_{field}_offsets.append(strs[e])")
+        lines.append(f"        else:")
+        lines.append(f"            offset = builder.CreateString(e)")
+        lines.append(f"            strs[e] = offset")
+        lines.append(f"            __fb_self_{field}_offsets.append(offset)")
+        lines.append(f"    {field}StartVector(builder, len(__fb_self_{field}))")
+        lines.append(f"    for o in reversed(__fb_self_{field}_offsets):")
+        lines.append(f"        builder.PrependUOffsetTRelative(o)")
+        lines.append(f"    __fb_self_{field}_offset = builder.EndVector(len(__fb_self_{field}))")
+
     lines.append(f"    builder.StartObject({num_slots})")
     for field in string_fields:
         norm_field_name = f"{field[0].upper()}{field[1:]}"
         field_starter_name = f"{name}Add{norm_field_name}"
         field_start = getattr(mod, field_starter_name)
         globs[field_starter_name] = field_start
-        lines.append(f"    {field_starter_name}(builder, strs[self.{field}])")
+        lines.append(f"    {field_starter_name}(builder, strs[__fb_self_{field}])")
 
     for field in optional_strings:
         norm_field_name = f"{field[0].upper()}{field[1:]}"
         field_starter_name = f"{name}Add{norm_field_name}"
         field_start = getattr(mod, field_starter_name)
         globs[field_starter_name] = field_start
-        lines.append(f"    if self.{field} is not None:")
+        lines.append(f"    if __fb_self_{field} is not None:")
         lines.append(
-            f"        {field_starter_name}(builder, strs[self.{field}])"
+            f"        {field_starter_name}(builder, strs[__fb_self_{field}])"
         )
 
     for field in lists_of_strings:
@@ -343,7 +339,7 @@ def _make_add_to_builder_fn(
         field_start = getattr(mod, field_starter_name)
         globs[field_starter_name] = field_start
         lines.append(
-            f"    {field_starter_name}(builder, nodes[id(self.{field})])"
+            f"    {field_starter_name}(builder, __fb_self_{field}_offset)"
         )
 
     for field in table_fields + [l[0] for l in lists_of_tables] + byte_fields:
