@@ -8,6 +8,14 @@ table JustAnOptionalString {
     id:string;
 }
 
+table JustAFloat {
+    value: float;
+}
+
+table JustADouble {
+    value: double;
+}
+
 table ListOfStrings {
     content: [string] (required);
 }

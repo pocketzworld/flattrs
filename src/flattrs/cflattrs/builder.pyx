@@ -131,6 +131,38 @@ cpdef inline void writeInt64(int64_t n, unsigned char* buffer, Py_ssize_t head):
     buffer[head] = n & 0xFF
 
 
+cdef union double2bytes:
+    double d
+    unsigned char b[8]
+
+
+cpdef inline void writeFloat64(double n, unsigned char* buffer, Py_ssize_t head):
+    cdef double2bytes t
+    t.d = n
+    buffer[head+7] = t.b[7]
+    buffer[head+6] = t.b[6]
+    buffer[head+5] = t.b[5]
+    buffer[head+4] = t.b[4]
+    buffer[head+3] = t.b[3]
+    buffer[head+2] = t.b[2]
+    buffer[head+1] = t.b[1]
+    buffer[head] = t.b[0]
+
+
+cdef union float2bytes:
+    float f
+    unsigned char b[8]
+
+
+cpdef inline void writeFloat32(float n, unsigned char* buffer, Py_ssize_t head):
+    cdef float2bytes t
+    t.f = n
+    buffer[head+3] = t.b[3]
+    buffer[head+2] = t.b[2]
+    buffer[head+1] = t.b[1]
+    buffer[head] = t.b[0]
+
+
 ## @cond FLATBUFFERS_INTERNAL
 class OffsetArithmeticError(RuntimeError):
     """
@@ -654,11 +686,19 @@ cdef class Builder(object):
     def PrependInt64Slot(self, Py_ssize_t o, int x, int d):
         self.PrependSlot(&Fb_int64_t, o, x, d)
 
-    def PrependFloat32Slot(self, Py_ssize_t o, int x, int d):
-        self.PrependSlot(&Fb_float32_t, o, x, d)
+    def PrependFloat32Slot(self, Py_ssize_t o, float x, float d):
+        if x != d:
+            self.Prep(Fb_float32_t.bytewidth, 0)
+            self.head = self.head - Fb_float32_t.bytewidth
+            writeFloat32(x, self.buffer, self.head)
+            self.Slot(o)
 
-    def PrependFloat64Slot(self, Py_ssize_t o, int x, int d):
-        self.PrependSlot(&Fb_float64_t, o, x, d)
+    def PrependFloat64Slot(self, Py_ssize_t o, double x, double d):
+        if x != d:
+            self.Prep(Fb_float64_t.bytewidth, 0)
+            self.head = self.head - Fb_float64_t.bytewidth
+            writeFloat64(x, self.buffer, self.head)
+            self.Slot(o)
 
     def PrependUOffsetTRelativeSlot(self, Py_ssize_t o, Py_ssize_t x, Py_ssize_t d):
         """

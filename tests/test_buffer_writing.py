@@ -8,8 +8,10 @@ from flattrs.cflattrs.builder import (
     writeInt16,
     writeInt32,
     writeInt64,
+    writeFloat32,
+    writeFloat64,
 )
-from struct import Struct
+from struct import Struct, pack, unpack
 
 from hypothesis import given
 from hypothesis.strategies import booleans, integers, floats
@@ -132,9 +134,24 @@ def test_int64(val):
     assert b1 == b2
 
 
-@given(integers(-(2 ** 63), (2 ** 63) - 1))
-def test_int64(val):
-    sut, oracle = writeInt64, Struct("<q")
+@given(floats(allow_nan=False))
+def test_floats(val):
+    sut, oracle = writeFloat32, Struct("<f")
+
+    b1 = bytearray(20)
+    b2 = bytearray(20)
+
+    val = unpack("f", pack("f", val))[0]
+
+    sut(val, b1, 0)
+    oracle.pack_into(b2, 0, val)
+
+    assert b1 == b2
+
+
+@given(floats(allow_nan=False))
+def test_doubles(val):
+    sut, oracle = writeFloat64, Struct("<d")
 
     b1 = bytearray(20)
     b2 = bytearray(20)

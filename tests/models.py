@@ -25,6 +25,8 @@ from tests.fbs.networking.socket.inbox.AnyClientContent import AnyClientContent
 from tests.fbs.networking.socket.inbox.ConversationUpdateRequest import ConversationUpdateRequest
 from tests.fbs.networking.socket.inbox.GetConversationsRequest import GetConversationsRequest
 from tests.fbs.networking.socket.inbox.GetMessagesRequest import GetMessagesRequest
+from tests.flattrs_test.JustAFloat import JustAFloat
+from tests.flattrs_test.JustADouble import JustADouble
 from tests.flattrs_test.JustAString import JustAString
 from tests.flattrs_test.JustAnOptionalString import JustAnOptionalString
 from tests.flattrs_test.ListOfStrings import ListOfStrings
@@ -39,6 +41,16 @@ class JustAString:
 @Flatbuffer(JustAnOptionalString)
 class JustAnOptionalString:
     id: Optional[str] = attr.ib()
+
+
+@Flatbuffer(JustAFloat)
+class JustAFloat:
+    value: float = attr.ib()
+
+
+@Flatbuffer(JustADouble)
+class JustADouble:
+    value: float = attr.ib()
 
 
 @Flatbuffer(ListOfStrings)
