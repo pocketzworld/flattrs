@@ -3,3 +3,7 @@ namespace flattrs_test;
 table JustAString {
     id:string (required);
 }
+
+table JustAnOptionalString {
+    id:string;
+}

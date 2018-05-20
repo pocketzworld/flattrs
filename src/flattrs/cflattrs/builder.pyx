@@ -364,12 +364,10 @@ cdef class Builder(object):
         # Next, write the offset to the new vtable in the
         # already-allocated SOffsetT at the beginning of this object:
         objectStart = self.buffer_length - objectOffset
-        #Write(soffset, self.Bytes, objectStart, self.Offset() - objectOffset)
         writeUint32(self.Offset() - objectOffset, self.buffer, objectStart)
 
         # Finally, store this vtable in memory for future
         # deduplication:
-        #self.vtables.append(self.Offset())
 
         PyMem_Free(self.current_vtable)
         self.current_vtable = NULL
