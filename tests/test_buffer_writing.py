@@ -14,7 +14,19 @@ from flattr.cflattr.builder import (
 from struct import Struct, pack, unpack
 
 from hypothesis import given
-from hypothesis.strategies import booleans, integers, floats
+from hypothesis.strategies import booleans, floats
+
+from .strats import (
+    uint8s,
+    uint16s,
+    uint32s,
+    uint64s,
+    int8s,
+    int16s,
+    int32s,
+    int64s,
+    float64s,
+)
 
 
 @given(booleans())
@@ -30,7 +42,7 @@ def test_bool(val):
     assert b1 == b2
 
 
-@given(integers(0, (2 ** 8) - 1))
+@given(uint8s)
 def test_uint8(val):
     sut, oracle = writeUint8, Struct("<B")
 
@@ -43,7 +55,7 @@ def test_uint8(val):
     assert b1 == b2
 
 
-@given(integers(0, 2 ** 16 - 1))
+@given(uint16s)
 def test_uint16(val):
     sut, oracle = writeUint16, Struct("<H")
 
@@ -56,7 +68,7 @@ def test_uint16(val):
     assert b1 == b2
 
 
-@given(integers(0, 2 ** 32 - 1))
+@given(uint32s)
 def test_uint32(val):
     sut, oracle = writeUint32, Struct("<I")
 
@@ -69,7 +81,7 @@ def test_uint32(val):
     assert b1 == b2
 
 
-@given(integers(0, 2 ** 64 - 1))
+@given(uint64s)
 def test_uint64(val):
     sut, oracle = writeUint64, Struct("<Q")
 
@@ -82,7 +94,7 @@ def test_uint64(val):
     assert b1 == b2
 
 
-@given(integers(-(2 ** 7), (2 ** 7) - 1))
+@given(int8s)
 def test_int8(val):
     sut, oracle = writeInt8, Struct("<b")
 
@@ -95,7 +107,7 @@ def test_int8(val):
     assert b1 == b2
 
 
-@given(integers(-(2 ** 15), (2 ** 15) - 1))
+@given(int16s)
 def test_int16(val):
     sut, oracle = writeInt16, Struct("<h")
 
@@ -108,7 +120,7 @@ def test_int16(val):
     assert b1 == b2
 
 
-@given(integers(-(2 ** 31), (2 ** 31) - 1))
+@given(int32s)
 def test_int32(val):
     sut, oracle = writeInt32, Struct("<i")
 
@@ -121,7 +133,7 @@ def test_int32(val):
     assert b1 == b2
 
 
-@given(integers(-(2 ** 63), (2 ** 63) - 1))
+@given(int64s)
 def test_int64(val):
     sut, oracle = writeInt64, Struct("<q")
 
@@ -149,7 +161,7 @@ def test_floats(val):
     assert b1 == b2
 
 
-@given(floats(allow_nan=False))
+@given(float64s)
 def test_doubles(val):
     sut, oracle = writeFloat64, Struct("<d")
 

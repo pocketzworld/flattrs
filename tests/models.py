@@ -74,13 +74,6 @@ class ListOfStrings:
     content: List[str] = attr.ib()
 
 
-@Flatbuffer(Common1)
-class Common1:
-    id: str = attr.ib()
-    aSmallInt: int = attr.ib()
-    aBigInt: int = attr.ib()
-
-
 @Flatbuffer(ClothingEntity)
 class ClothingEntity:
     descriptorId: str = attr.ib()

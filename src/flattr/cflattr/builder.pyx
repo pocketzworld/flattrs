@@ -656,7 +656,7 @@ cdef class Builder(object):
             self.Prepend(type, x)
             self.Slot(o)
 
-    def PrependBoolSlot(self, Py_ssize_t o, int x, int d):
+    def PrependBoolSlot(self, Py_ssize_t o, bint x, bint d):
         self.PrependSlot(&Fb_bool_t, o, x, d)
 
     def PrependByteSlot(self, Py_ssize_t o, int x, int d):
@@ -683,7 +683,7 @@ cdef class Builder(object):
     def PrependInt32Slot(self, Py_ssize_t o, int32_t x, int32_t d):
         self.PrependSlot(&Fb_int32_t, o, x, d)
 
-    def PrependInt64Slot(self, Py_ssize_t o, int x, int d):
+    def PrependInt64Slot(self, Py_ssize_t o, int64_t x, int64_t d):
         self.PrependSlot(&Fb_int64_t, o, x, d)
 
     def PrependFloat32Slot(self, Py_ssize_t o, float x, float d):

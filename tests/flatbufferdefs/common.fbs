@@ -5,3 +5,32 @@ table Common1 {
     aSmallInt:uint8;
     aBigInt:int32;
 }
+
+table AllScalars {
+    boolean: bool;
+    uint8: uint8;
+    uint16: uint16;
+    uint32: uint32;
+    uint64: uint64;
+    int8: int8;
+    int16: int16;
+    int32: int32;
+    int64: int64;
+    float32: float;
+    float64: double;
+}
+
+
+table AllScalarsWithDefaults {
+    boolean: bool = true;
+    uint8: uint8 = 1;
+    uint16: uint16 = 1;
+    uint32: uint32 = 1;
+    uint64: uint64 = 1;
+    int8: int8 = 1;
+    int16: int16 = 1;
+    int32: int32 = 1;
+    int64: int64 = 1;
+    float32: float = 1.0;
+    float64: double = 1.0;
+}

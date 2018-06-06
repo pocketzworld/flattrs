@@ -1,10 +1,6 @@
-import pytest
 from hypothesis import given
-from hypothesis.strategies import composite, integers
 
 from flattr import model_to_bytes
-from flattr.cflattr.builder import Builder as CBuilder
-from flatbuffers.builder import Builder
 
 from ..test_trivial import (
     just_a_strings,
@@ -13,11 +9,7 @@ from ..test_trivial import (
     lists_of_strings,
 )
 
-
-@composite
-def builders(draw):
-    size = draw(integers(0, 50000))
-    return CBuilder(size), Builder(size)
+from . import builders
 
 
 @given(just_a_strings(), builders())
