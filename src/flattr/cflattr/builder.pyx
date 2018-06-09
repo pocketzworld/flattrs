@@ -651,11 +651,6 @@ cdef class Builder(object):
             self.Prepend(type, x)
             self.Slot(o)
 
-    cdef void PrependSlotUint64(self, FlatbufferType* type, Py_ssize_t o, uint64_t x, uint64_t d):
-        if x != d:
-            self.Prepend(type, x)
-            self.Slot(o)
-
     def PrependBoolSlot(self, Py_ssize_t o, bint x, bint d):
         self.PrependSlot(&Fb_bool_t, o, x, d)
 
@@ -732,7 +727,11 @@ cdef class Builder(object):
 
     def PrependByte(self, x):
         """Prepend a `byte` to the Builder buffer.
-
+if x != d:
+            self.Prep(Fb_float32_t.bytewidth, 0)
+            self.head = self.head - Fb_float32_t.bytewidth
+            writeFloat32(x, self.buffer, self.head)
+            self.Slot(o)
         Note: aligns and checks for space.
         """
         self.Prepend(&Fb_uint8_t, x)
@@ -751,7 +750,7 @@ cdef class Builder(object):
         """
         self.Prepend(&Fb_uint16_t, x)
 
-    def PrependUint32(self, int x):
+    def PrependUint32(self, uint32_t x):
         """Prepend an `uint32` to the Builder buffer.
 
         Note: aligns and checks for space.
@@ -763,7 +762,8 @@ cdef class Builder(object):
 
         Note: aligns and checks for space.
         """
-        self.Prepend(&Fb_uint64_t, x)
+        self.Prep(Fb_uint64_t.bytewidth, 0)
+        self.Place(x, &Fb_uint64_t)
 
     def PrependInt8(self, x):
         """Prepend an `int8` to the Builder buffer.
@@ -798,14 +798,18 @@ cdef class Builder(object):
 
         Note: aligns and checks for space.
         """
-        self.Prepend(&Fb_float32_t, x)
+        self.Prep(Fb_float32_t.bytewidth, 0)
+        self.head = self.head - Fb_float32_t.bytewidth
+        writeFloat32(x, self.buffer, self.head)
 
     def PrependFloat64(self, x):
         """Prepend a `float64` to the Builder buffer.
 
         Note: aligns and checks for space.
         """
-        self.Prepend(&Fb_float64_t, x)
+        self.Prep(Fb_float64_t.bytewidth, 0)
+        self.head = self.head - Fb_float64_t.bytewidth
+        writeFloat64(x, self.buffer, self.head)
 
 ##############################################################
 
@@ -813,7 +817,7 @@ cdef class Builder(object):
     cdef void PrependVOffsetT(self, uint16_t x):
         self.Prepend(&Fb_uint16_t, x)
 
-    cdef void Place(self, int64_t x, FlatbufferType *fb_type):
+    cdef void Place(self, uint64_t x, FlatbufferType *fb_type):
         """
         Place prepends a value specified by `flags` to the Builder,
         without checking for available space.

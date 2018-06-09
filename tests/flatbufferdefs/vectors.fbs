@@ -1,0 +1,15 @@
+namespace flattrs_test;
+
+table VectorsOfScalars {
+    vecOfBools: [bool];
+    vecOfUint8s: [uint8];
+    vecOfUint16s: [uint16];
+    vecOfUint32s: [uint32];
+    vecOfUint64s: [uint64];
+    vecOfInt8s: [int8];
+    vecOfInt16s: [int16];
+    vecOfInt32s: [int32];
+    vecOfInt64s: [int64];
+    vecOfFloat32s: [float32];
+    vecOfFloat64s: [float64];
+}

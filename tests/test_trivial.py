@@ -1,15 +1,7 @@
 """Test serialization and deserialization of common tables."""
 from struct import pack, unpack
-from flatbuffers.builder import Builder as CanonicalBuilder
 from hypothesis import given
-from hypothesis.strategies import (
-    composite,
-    text,
-    integers,
-    none,
-    lists,
-    floats,
-)
+from hypothesis.strategies import composite, text, none, lists, floats
 
 from flattr import model_from_bytes, model_to_bytes
 

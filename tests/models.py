@@ -46,7 +46,6 @@ from tests.flattrs_test.JustADouble import JustADouble
 from tests.flattrs_test.JustAString import JustAString
 from tests.flattrs_test.JustAnOptionalString import JustAnOptionalString
 from tests.flattrs_test.ListOfStrings import ListOfStrings
-from tests.flattrs_test.Common1 import Common1
 
 
 @Flatbuffer(JustAString)

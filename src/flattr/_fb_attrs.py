@@ -6,6 +6,21 @@ from typing import Any, Callable, List, Set, Optional, Type, Tuple, Union
 
 import attr
 from attr import fields, has
+
+from flatbuffers.number_types import (
+    BoolFlags,
+    Uint8Flags,
+    Uint16Flags,
+    Uint32Flags,
+    Uint64Flags,
+    Int8Flags,
+    Int16Flags,
+    Int32Flags,
+    Int64Flags,
+    Float32Flags,
+    Float64Flags,
+)
+
 try:
     from .cflattr.builder import Builder
 except ImportError:
@@ -16,7 +31,6 @@ UNION_CL = "__fb_union_cl"
 
 
 def Flatbuffer(fb_cl):
-
     def wrapper(cl):
         res = attr.s(slots=True)(cl)
         res.__fb_module__ = modules[fb_cl.__module__]
@@ -29,7 +43,6 @@ def Flatbuffer(fb_cl):
 
 
 def FlatbufferEnum(fb_cl):
-
     def wrapper(cl):
         res = unique(cl)
         res.__fb_module__ = modules[fb_cl.__module__]
@@ -65,6 +78,7 @@ def _make_fb_functions(cl):
     optional_tables = []
     lists_of_tables = []
     lists_of_strings = []
+    lists_of_scalars = []  # type: List[Tuple[str, Type, Any]]
     enums = []
     inlines = []
     unions = []
@@ -98,6 +112,10 @@ def _make_fb_functions(cl):
                 lists_of_strings.append(field.name)
             elif has(arg):
                 lists_of_tables.append((field.name, arg))
+            elif arg in (int, float, bool):
+                lists_of_scalars.append(
+                    (field.name, arg, _get_scalar_list_type(cl, field.name))
+                )
         elif issubclass(type, IntEnum):
             enums.append(field.name)
         else:
@@ -131,6 +149,7 @@ def _make_fb_functions(cl):
             optional_tables,
             lists_of_tables,
             lists_of_strings,
+            lists_of_scalars,
             inlines + enums,
             unions,
         ),
@@ -151,11 +170,12 @@ def _make_fb_functions(cl):
             lists_of_strings,
             unions,
             inlines,
+            lists_of_scalars,
         ),
     )
 
 
-def model_to_bytes(inst, builder: Optional[Builder]=None) -> bytes:
+def model_to_bytes(inst, builder: Optional[Builder] = None) -> bytes:
     builder = Builder(10000) if builder is None else builder
     byte_items, fb_items = inst.__fb_nonnestables__()
     string_offsets = {}
@@ -190,6 +210,20 @@ class FBItemType(str, Enum):
 
 FBItem = Tuple[Any, FBItemType, Callable]
 
+fb_number_type_to_builder_prepend = {
+    BoolFlags: "PrependBool",
+    Uint8Flags: "PrependUint8",
+    Uint16Flags: "PrependUint16",
+    Uint32Flags: "PrependUint32",
+    Uint64Flags: "PrependUint64",
+    Int8Flags: "PrependInt8",
+    Int16Flags: "PrependInt16",
+    Int32Flags: "PrependInt32",
+    Int64Flags: "PrependInt64",
+    Float32Flags: "PrependFloat32",
+    Float64Flags: "PrependFloat64",
+}
+
 
 def _make_nonnestables_fn(
     cl,
@@ -204,10 +238,7 @@ def _make_nonnestables_fn(
 ) -> Callable[[], Tuple[Set[str], List[bytes], List[FBItem]]]:
     name = cl.__fb_class__.__name__
     mod = cl.__fb_module__
-    globs = {
-        "FBTable": FBItemType.TABLE,
-        "FBVector": FBItemType.VECTOR,
-    }
+    globs = {"FBTable": FBItemType.TABLE, "FBVector": FBItemType.VECTOR}
     lines = []
     lines.append("def __fb_nonnestables__(self):")
 
@@ -240,9 +271,7 @@ def _make_nonnestables_fn(
 
         lines.append(f"    {field}_items = self.{field}")
         lines.append(f"    for item in {field}_items:")
-        lines.append(
-            f"        i_bs, i_is = item.__fb_nonnestables__()"
-        )
+        lines.append(f"        i_bs, i_is = item.__fb_nonnestables__()")
         lines.append(f"        byte_items.extend(i_bs)")
         lines.append(f"        fb_items.extend(i_is)")
         lines.append(f"    vec_start = {field}VectorStart")
@@ -261,7 +290,10 @@ def _make_nonnestables_fn(
     eval(compile(script, unique_filename, "exec"), globs)
 
     linecache.cache[unique_filename] = (
-        len(script), None, script.splitlines(True), unique_filename
+        len(script),
+        None,
+        script.splitlines(True),
+        unique_filename,
     )
 
     return globs["__fb_nonnestables__"]
@@ -276,6 +308,7 @@ def _make_add_to_builder_fn(
     optional_tables: List[str],
     lists_of_tables: List[Tuple[str, Type]],
     lists_of_strings: List[str],
+    lists_of_scalars: List[Tuple[str, Type]],
     inlines: List[str],
     unions: List[Tuple[str, Type]],
 ):
@@ -290,16 +323,24 @@ def _make_add_to_builder_fn(
     for field in string_fields:
         lines.append(f"    __fb_self_{field} = self.{field}")
         lines.append(f"    if __fb_self_{field} not in strs:")
-        lines.append(f"        strs[__fb_self_{field}] = builder.CreateString(__fb_self_{field})")
+        lines.append(
+            f"        strs[__fb_self_{field}] = builder.CreateString(__fb_self_{field})"
+        )
 
     for field in optional_strings:
         lines.append(f"    __fb_self_{field} = self.{field}")
-        lines.append(f"    if __fb_self_{field} is not None and __fb_self_{field} not in strs:")
-        lines.append(f"        strs[__fb_self_{field}] = builder.CreateString(__fb_self_{field})")
+        lines.append(
+            f"    if __fb_self_{field} is not None and __fb_self_{field} not in strs:"
+        )
+        lines.append(
+            f"        strs[__fb_self_{field}] = builder.CreateString(__fb_self_{field})"
+        )
 
     for field in lists_of_strings:
         norm_field_name = f"{field[0].upper()}{field[1:]}"
-        globs[f"{field}StartVector"] = getattr(mod, f'{cl.__name__}Start{norm_field_name}Vector')
+        globs[f"{field}StartVector"] = getattr(
+            mod, f"{cl.__name__}Start{norm_field_name}Vector"
+        )
 
         lines.append(f"    __fb_self_{field} = self.{field}")
         lines.append(f"    __fb_self_{field}_offsets = []")
@@ -310,10 +351,31 @@ def _make_add_to_builder_fn(
         lines.append(f"            offset = builder.CreateString(e)")
         lines.append(f"            strs[e] = offset")
         lines.append(f"            __fb_self_{field}_offsets.append(offset)")
-        lines.append(f"    {field}StartVector(builder, len(__fb_self_{field}))")
+        lines.append(
+            f"    {field}StartVector(builder, len(__fb_self_{field}))"
+        )
         lines.append(f"    for o in reversed(__fb_self_{field}_offsets):")
         lines.append(f"        builder.PrependUOffsetTRelative(o)")
-        lines.append(f"    __fb_self_{field}_offset = builder.EndVector(len(__fb_self_{field}))")
+        lines.append(
+            f"    __fb_self_{field}_offset = builder.EndVector(len(__fb_self_{field}))"
+        )
+
+    for field, _, fb_number_type in lists_of_scalars:
+        norm_field_name = f"{field[0].upper()}{field[1:]}"
+        prepend = fb_number_type_to_builder_prepend[fb_number_type]
+        globs[f"{field}StartVector"] = getattr(
+            mod, f"{cl.__name__}Start{norm_field_name}Vector"
+        )
+
+        lines.append(f"    __fb_self_{field} = self.{field}")
+        lines.append(
+            f"    {field}StartVector(builder, len(__fb_self_{field}))"
+        )
+        lines.append(f"    for o in reversed(__fb_self_{field}):")
+        lines.append(f"        builder.{prepend}(o)")
+        lines.append(
+            f"    __fb_self_{field}_offset = builder.EndVector(len(__fb_self_{field}))"
+        )
 
     lines.append(f"    builder.StartObject({num_slots})")
 
@@ -322,7 +384,9 @@ def _make_add_to_builder_fn(
         field_starter_name = f"{name}Add{norm_field_name}"
         field_start = getattr(mod, field_starter_name)
         slot_num, default = _get_offsets_for_string(field_start)
-        lines.append(f"    builder.PrependUOffsetTRelativeSlot({slot_num}, strs[__fb_self_{field}], {default})")
+        lines.append(
+            f"    builder.PrependUOffsetTRelativeSlot({slot_num}, strs[__fb_self_{field}], {default})"
+        )
 
     for field in optional_strings:
         norm_field_name = f"{field[0].upper()}{field[1:]}"
@@ -350,6 +414,15 @@ def _make_add_to_builder_fn(
         globs[field_starter_name] = field_start
         lines.append(
             f"    {field_starter_name}(builder, nodes[id(self.{field})])"
+        )
+
+    for field, _, _ in lists_of_scalars:
+        norm_field_name = f"{field[0].upper()}{field[1:]}"
+        field_starter_name = f"{name}Add{norm_field_name}"
+        field_start = getattr(mod, field_starter_name)
+        globs[field_starter_name] = field_start
+        lines.append(
+            f"    {field_starter_name}(builder, __fb_self_{field}_offset)"
         )
 
     for field in optional_tables:
@@ -394,13 +467,17 @@ def _make_add_to_builder_fn(
     sha1 = hashlib.sha1()
     sha1.update(name.encode("utf-8"))
     unique_filename = "<FB add_to_builder for %s, %s>" % (
-        name, sha1.hexdigest()
+        name,
+        sha1.hexdigest(),
     )
     script = "\n".join(lines)
     eval(compile(script, unique_filename, "exec"), globs)
 
     linecache.cache[unique_filename] = (
-        len(script), None, script.splitlines(True), unique_filename
+        len(script),
+        None,
+        script.splitlines(True),
+        unique_filename,
     )
 
     return globs["__fb_add_to_builder__"]
@@ -424,7 +501,10 @@ def _make_from_bytes_fn(cl) -> Callable:
     eval(compile(script, unique_filename, "exec"), globs)
 
     linecache.cache[unique_filename] = (
-        len(script), None, script.splitlines(True), unique_filename
+        len(script),
+        None,
+        script.splitlines(True),
+        unique_filename,
     )
 
     return globs["__fb_from_bytes__"]
@@ -441,6 +521,7 @@ def _make_from_fb_fn(
     lists_of_strings: List[str],
     union_fields: List[Tuple[str, List[Type], Type]],
     inlines: List[str],
+    lists_of_scalars: List[Tuple[str, Type]],
 ) -> Callable:
     """Compile a function to init an attrs model from a FB model."""
     name = cl.__fb_class__.__name__
@@ -448,6 +529,7 @@ def _make_from_fb_fn(
     lines = []
     table_field_names = {t[0]: t[1] for t in lists_of_tables}
     union_field_names = {t[0]: t for t in union_fields}
+    lists_of_scalar_names = {t[0]: t[1] for t in lists_of_scalars}
 
     from_fb = "__fb_from_fb__"
     lines.append("@classmethod")
@@ -527,6 +609,9 @@ def _make_from_fb_fn(
             lines.append(
                 f"    {dn}[fb_instance.{norm_field_name}Type()](fb_instance.{norm_field_name}())"
             )
+        elif fname in lists_of_scalar_names:
+            for_ = f"for i in range(fb_instance.{norm_field_name}Length())"
+            lines.append(f"        [fb_instance.{norm_field_name}(i) {for_}],")
         else:
             raise ValueError(f"Can't handle {fname} (type {field.type}).")
 
@@ -540,7 +625,10 @@ def _make_from_fb_fn(
     eval(compile(script, unique_filename, "exec"), globs)
 
     linecache.cache[unique_filename] = (
-        len(script), None, script.splitlines(True), unique_filename
+        len(script),
+        None,
+        script.splitlines(True),
+        unique_filename,
     )
 
     return globs["__fb_from_fb__"]
@@ -550,6 +638,7 @@ def _get_num_slots(fn) -> int:
     class DummyBuilder:
         def StartObject(self, slot_num):
             self.slot_num = slot_num
+
     d = DummyBuilder()
     fn(d)
     return d.slot_num
@@ -564,6 +653,27 @@ def _get_offsets_for_string(fn) -> Tuple[int, int]:
                 raise ValueError("Failed extracting parameters.")
             self.slot_num = slot_num
             self.default = default
+
     d = DummyBuilder()
     fn(d, sentinel)
     return d.slot_num, d.default
+
+
+def _get_scalar_list_type(cl, fname: str) -> Any:
+    """Fish out the scalar type for a lists of scalars."""
+
+    class DummyTab:
+        def Offset(self, x):
+            return 1
+
+        def GetVectorAsNumpy(self, number_type, _):
+            self.scalar_type = number_type
+            return object()
+
+    tab = DummyTab()
+    inst = cl.__fb_class__()
+    inst._tab = tab
+    norm_field_name = f"{fname[0].upper()}{fname[1:]}"
+    getattr(inst, f"{norm_field_name}AsNumpy")()
+
+    return tab.scalar_type
