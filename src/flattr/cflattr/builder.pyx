@@ -1,3 +1,4 @@
+#cython: language_level=3,
 # Copyright 2014 Google Inc. All rights reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -11,7 +12,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-from libc.string cimport memcpy, memset
+from libc.string cimport memcmp, memcpy, memset
 from libc.stdint cimport uint8_t, uint16_t, uint32_t, uint64_t, int8_t, int16_t, int32_t, int64_t
 from cpython.mem cimport PyMem_Malloc, PyMem_Free
 
@@ -21,38 +22,15 @@ from .number_types cimport Flags, enforce_number
 
 from flatbuffers import encode
 
-
-## @file
-## @addtogroup flatbuffers_python_api
-## @{
-
-
-#cdef Flags BoolFlags = Flags(1, False, True, bool, "bool", struct.Struct("?"), True)
-#cdef Flags Uint8Flags = Flags(1, 0, 0, int, "uint8", struct.Struct("<B"), True)
-#cdef Flags Uint16Flags = Flags(2, 0, 0, int, "uint16", struct.Struct("<H"), True)
-#cdef Flags Uint32Flags = Flags(4, 0, 0, int, "uint32", struct.Struct("<I"), True)
-#cdef Flags Uint64Flags = Flags(8, 0, 0, int, "uint64", struct.Struct("<Q"), True)
-
-
-#cdef Flags Int8Flags = Flags(1, 0, 0, int, "int8", struct.Struct("<b"), True)
-#cdef Flags Int16Flags = Flags(2, 0, 0, int, "int16", struct.Struct("<h"), True)
-#cdef Flags Int32Flags = Flags(4, 0, 0, int, "int32", struct.Struct("<i"), True)
-#cdef Flags Int64Flags = Flags(8, 0, 0, int, "int64", struct.Struct("<q"), True)
-
-#cdef Flags Float32Flags = Flags(4, 0, 0, float, "float32", struct.Struct("<f"), False)
-#cdef Flags Float64Flags = Flags(8, 0, 0, float, "float64", struct.Struct("<d"), False)
-
-#cdef uoffset = struct.Struct("<I")
-#cdef soffset = struct.Struct("<i")
-cdef voffset = struct.Struct("<H")
-
-
-#cdef Flags SOffsetTFlags = Int32Flags
-#cdef Flags UOffsetTFlags = Uint32Flags
-#cdef Flags VOffsetTFlags = Uint16Flags
-
 cdef struct FlatbufferType:
     uint8_t bytewidth
+
+
+cdef struct StoredVtable:
+    uint32_t num_fields
+    unsigned char* vtable
+    int64_t offset        # Offset from the end of the file.
+    StoredVtable* next
 
 
 cdef FlatbufferType Fb_bool_t = FlatbufferType(1)
@@ -163,7 +141,6 @@ cpdef inline void writeFloat32(float n, unsigned char* buffer, Py_ssize_t head):
     buffer[head] = t.b[0]
 
 
-## @cond FLATBUFFERS_INTERNAL
 class OffsetArithmeticError(RuntimeError):
     """
     Error caused by an Offset arithmetic error. Probably caused by bad
@@ -214,7 +191,6 @@ class BuilderNotFinishedError(RuntimeError):
 # VtableMetadataFields is the count of metadata fields in each vtable.
 cdef unsigned int VtableMetadataFields = 2
 cdef unsigned int MAX_BUFFER_SIZE = 2**31
-## @endcond
 
 cdef class Builder(object):
     """ A Builder is used to construct one or more FlatBuffers.
@@ -236,16 +212,14 @@ cdef class Builder(object):
       Bytes: The internal `bytearray` for the Builder.
       finished: A boolean determining if the Builder has been finalized.
     """
-
-    ## @cond FLATBUFFERS_INTENRAL
     cdef unsigned char* buffer
     cdef Py_ssize_t buffer_length
-    cdef uint64_t* current_vtable
+    cdef Py_ssize_t* current_vtable
     cdef Py_ssize_t current_vtable_length
     cdef Py_ssize_t head
     cdef Py_ssize_t minalign
     cdef int objectEnd
-    cdef vtables
+    cdef StoredVtable* vtables
     cdef bint nested
     cdef bint finished
 
@@ -254,8 +228,6 @@ cdef class Builder(object):
     Builder will never allow it's buffer grow over this size.
     Currently equals 2Gb.
     """
-
-    ## @endcond
 
     def __init__(self, Py_ssize_t initialSize):
         """Initializes a Builder of size `initial_size`.
@@ -269,17 +241,16 @@ cdef class Builder(object):
         self.buffer = <unsigned char*> PyMem_Malloc(sizeof(unsigned char) * initialSize)
         if self.buffer is NULL:
             raise MemoryError()
+        memset(self.buffer, 0, sizeof(unsigned char) * initialSize)
         self.buffer_length = initialSize
-        ## @cond FLATBUFFERS_INTERNAL
         self.current_vtable = NULL
         self.current_vtable_length = 0
         self.head = initialSize
         self.minalign = 1
         self.objectEnd = -1
-        self.vtables = []
         self.nested = False
-        ## @endcond
         self.finished = False
+        self.vtables = NULL
 
     def __dealloc__(self):
         PyMem_Free(self.buffer)
@@ -287,6 +258,11 @@ cdef class Builder(object):
             PyMem_Free(self.current_vtable)
             self.current_vtable = NULL
             self.current_vtable_length = 0
+        while self.vtables is not NULL:
+            next = self.vtables.next
+            PyMem_Free(self.vtables.vtable)
+            PyMem_Free(self.vtables)
+            self.vtables = next
 
     def Output(self):
         """Return the portion of the buffer that has been used for writing data.
@@ -307,17 +283,20 @@ cdef class Builder(object):
 
         return res
 
-    ## @cond FLATBUFFERS_INTERNAL
+    @property
+    def Bytes(self):
+        return self.buffer[0:self.buffer_length]
+
     def StartObject(self, int numfields):
         """StartObject initializes bookkeeping for writing a new object."""
 
         self.assertNotNested()
 
         if numfields > 0:
-            self.current_vtable = <uint64_t *>PyMem_Malloc(sizeof(uint64_t) * numfields)
+            self.current_vtable = <Py_ssize_t*>PyMem_Malloc(sizeof(Py_ssize_t) * numfields)
             if self.current_vtable is NULL:
                 raise MemoryError()
-            memset(self.current_vtable, 0, sizeof(uint64_t) * numfields)
+            memset(self.current_vtable, 0, sizeof(Py_ssize_t) * numfields)
         self.current_vtable_length = numfields
         self.objectEnd = self.Offset()
         self.minalign = 1
@@ -346,11 +325,12 @@ cdef class Builder(object):
           <byte: data>+
         """
         cdef Py_ssize_t objectOffset, i, off, objectSize, objectStart, vBytes
-        cdef Py_ssize_t effective_vtable_length
+        cdef Py_ssize_t effective_vtable_length, vtable_offset
+        cdef StoredVtable* svt
 
         # Prepend a zero scalar to the object. Later in this function we'll
         # write an offset here that points to the object's vtable:
-        self.PrependSOffsetTRelative(0)
+        self.PrependSOffsetTRelative(0)  # 32-bit value.
 
         objectOffset = self.Offset()
 
@@ -361,16 +341,44 @@ cdef class Builder(object):
                 effective_vtable_length = i
                 break
 
-        # Search backwards through existing vtables, because similar vtables
-        # are likely to have been recently appended. See
-        # BenchmarkVtableDeduplication for a case in which this heuristic
-        # saves about 30% of the time used in writing objects with duplicate
-        # tables.
-
-        # Did not find a vtable, so write this one to the buffer.
-
-        # Write out the current vtable in reverse , because
+        # Write out the current vtable in reverse, because
         # serialization occurs in last-first order:
+        i = effective_vtable_length - 1
+        cdef Py_ssize_t norm_vtable_length = sizeof(uint16_t) * effective_vtable_length
+        norm_vtable = <unsigned char*>PyMem_Malloc(norm_vtable_length)
+        while i >= 0:
+            off = 0
+            if self.current_vtable[i] != 0:
+                # Forward reference to field;
+                # use 32bit number to ensure no overflow:
+                off = objectOffset - self.current_vtable[i]
+
+            writeUint16(off, norm_vtable, i*2)
+            i -= 1
+
+        # Check if this vtable has been seen already.
+        svt = self.vtables
+        while svt is not NULL:
+            if (svt.num_fields == effective_vtable_length and
+                memcmp(norm_vtable, svt.vtable, norm_vtable_length) == 0):
+                break
+            svt = svt.next
+
+        if svt is not NULL:
+            PyMem_Free(self.current_vtable)
+            self.current_vtable = NULL
+            self.current_vtable_length = 0
+            PyMem_Free(norm_vtable)
+            objectStart = self.buffer_length - objectOffset
+            self.head = objectStart
+
+            # Write the offset to the found vtable in the
+            # already-allocated SOffsetT at the beginning of this object.
+            # The cached vtable contains its offset from the end of the buffer.
+            vtable_offset = svt.offset
+            writeInt32(vtable_offset - objectOffset, self.buffer, objectStart)
+            return self.Offset()
+
         i = effective_vtable_length - 1
         while i >= 0:
             off = 0
@@ -381,7 +389,6 @@ cdef class Builder(object):
 
             self.PrependVOffsetT(off)
             i -= 1
-
         # The two metadata fields are written last.
 
         # First, store the object bytesize:
@@ -400,6 +407,12 @@ cdef class Builder(object):
 
         # Finally, store this vtable in memory for future
         # deduplication:
+        svt = <StoredVtable*>PyMem_Malloc(sizeof(StoredVtable))
+        svt.num_fields = effective_vtable_length
+        svt.vtable = norm_vtable
+        svt.next = self.vtables
+        svt.offset = self.Offset()
+        self.vtables = svt
 
         PyMem_Free(self.current_vtable)
         self.current_vtable = NULL
@@ -423,17 +436,12 @@ cdef class Builder(object):
         newSize = min(self.buffer_length * 2, MAX_BUFFER_SIZE)
         if newSize == 0:
             newSize = 1
-        #bytes2 = bytearray(newSize)
         buffer_2 = <unsigned char *>PyMem_Malloc(sizeof(unsigned char) * newSize)
-        #bytes2[newSize-self.buffer_length:] = self.Bytes
         memcpy(&buffer_2[newSize-self.buffer_length], self.buffer, self.buffer_length)
-        #self.Bytes = bytes2
         self.buffer_length = newSize
         PyMem_Free(self.buffer)
         self.buffer = buffer_2
-    ## @endcond
 
-    ## @cond FLATBUFFERS_INTERNAL
     cdef Py_ssize_t Offset(self):
         """Offset relative to the end of the buffer."""
         return self.buffer_length - self.head
@@ -483,7 +491,6 @@ cdef class Builder(object):
             raise OffsetArithmeticError(msg)
         off2 = self.Offset() - off + Fb_int32_t.bytewidth
         self.PlaceSOffsetT(off2)
-    ## @endcond
 
     cpdef void PrependUOffsetTRelative(self, Py_ssize_t off):
         """Prepends an unsigned offset into vector data, relative to where it
@@ -498,7 +505,6 @@ cdef class Builder(object):
         off2 = self.Offset() - off + Fb_uint32_t.bytewidth
         self.PlaceUOffsetT(off2)
 
-    ## @cond FLATBUFFERS_INTERNAL
     def StartVector(self, int elemSize, Py_ssize_t numElems, Py_ssize_t alignment):
         """
         StartVector initializes bookkeeping for writing a new vector.
@@ -513,7 +519,6 @@ cdef class Builder(object):
         self.Prep(Fb_uint32_t.bytewidth, elemSize*numElems)
         self.Prep(alignment, elemSize*numElems)  # In case alignment > int.
         return self.Offset()
-    ## @endcond
 
     cpdef Py_ssize_t EndVector(self, Py_ssize_t vectorNumElems):
         """EndVector writes data necessary to finish vector construction."""
@@ -556,9 +561,7 @@ cdef class Builder(object):
         """CreateString writes a byte vector."""
 
         self.assertNotNested()
-        ## @cond FLATBUFFERS_INTERNAL
         self.nested = True
-        ## @endcond
 
         if not isinstance(x, (bytes, bytearray)):
             raise TypeError("non-byte vector passed to CreateByteVector")
@@ -566,13 +569,10 @@ cdef class Builder(object):
         self.Prep(Fb_uint32_t.bytewidth, len(x)*Fb_uint8_t.bytewidth)
 
         l = len(x)
-        ## @cond FLATBUFFERS_INTERNAL
         self.head = self.head - l
-        ## @endcond
 
         return self.EndVector(len(x))
 
-    ## @cond FLATBUFFERS_INTERNAL
     cdef void assertNested(self) except *:
         """
         Check that we are in the process of building an object.
@@ -612,7 +612,6 @@ cdef class Builder(object):
         if slotnum >= self.current_vtable_length:
             raise IndexError()
         self.current_vtable[slotnum] = self.Offset()
-    ## @endcond
 
     cdef Py_ssize_t __Finish(self, Py_ssize_t rootTable, bint sizePrefix):
         """Finish finalizes a buffer, pointing to the given `rootTable`."""
@@ -641,7 +640,6 @@ cdef class Builder(object):
         """
         return self.__Finish(rootTable, True)
 
-    ## @cond FLATBUFFERS_INTERNAL
     cdef void Prepend(self, FlatbufferType* type, int64_t off):
         self.Prep(type.bytewidth, 0)
         self.Place(off, type)
@@ -701,7 +699,6 @@ cdef class Builder(object):
         vtable slot `o`. If value `x` equals default `d`, then the slot will
         be set to zero and no other data will be written.
         """
-
         if x != d:
             self.PrependUOffsetTRelative(x)
             self.Slot(o)
@@ -716,8 +713,6 @@ cdef class Builder(object):
             self.assertStructIsInline(x)
             self.Slot(v)
 
-    ## @endcond
-
     def PrependBool(self, x):
         """Prepend a `bool` to the Builder buffer.
 
@@ -727,11 +722,7 @@ cdef class Builder(object):
 
     def PrependByte(self, x):
         """Prepend a `byte` to the Builder buffer.
-if x != d:
-            self.Prep(Fb_float32_t.bytewidth, 0)
-            self.head = self.head - Fb_float32_t.bytewidth
-            writeFloat32(x, self.buffer, self.head)
-            self.Slot(o)
+
         Note: aligns and checks for space.
         """
         self.Prepend(&Fb_uint8_t, x)
@@ -811,9 +802,6 @@ if x != d:
         self.head = self.head - Fb_float64_t.bytewidth
         writeFloat64(x, self.buffer, self.head)
 
-##############################################################
-
-    ## @cond FLATBUFFERS_INTERNAL
     cdef void PrependVOffsetT(self, uint16_t x):
         self.Prepend(&Fb_uint16_t, x)
 
@@ -849,7 +837,6 @@ if x != d:
         for space.
         """
         self.head = self.head - Fb_uint16_t.bytewidth
-        #Write(voffset, self.Bytes, self.head, x)
         writeUint16(x, self.buffer, self.head)
 
     cdef void PlaceSOffsetT(self, int32_t x):
@@ -867,25 +854,3 @@ if x != d:
         self.head = self.head - Fb_uint32_t.bytewidth
         #Write(uoffset, self.Bytes, self.head, x)
         writeUint32(x, self.buffer, self.head)
-    ## @endcond
-
-## @cond FLATBUFFERS_INTERNAL
-def vtableEqual(a, objectStart, b):
-    """vtableEqual compares an unwritten vtable to a written vtable."""
-
-    if len(a) * Fb_uint16_t.bytewidth != len(b):
-        return False
-
-    for i, elem in enumerate(a):
-        x = encode.Get(voffset, b, i * Fb_uint16_t.bytewidth)
-
-        # Skip vtable entries that indicate a default value.
-        if x == 0 and elem == 0:
-            pass
-        else:
-            y = objectStart - elem
-            if x != y:
-                return False
-    return True
-## @endcond
-## @}

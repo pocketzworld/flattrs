@@ -4,6 +4,9 @@ import attr
 from flattr import Flatbuffer
 
 from .flattrs_test.VectorsOfScalars import VectorsOfScalars
+from .flattrs_test.VectorOfCommon1 import VectorOfCommon1
+
+from .models_common import Common1
 
 
 @Flatbuffer(VectorsOfScalars)
@@ -19,3 +22,8 @@ class VectorsOfScalars:
     vecOfInt64s: List[int] = attr.ib()
     vecOfFloat32s: List[float] = attr.ib()
     vecOfFloat64s: List[float] = attr.ib()
+
+
+@Flatbuffer(VectorOfCommon1)
+class VectorOfCommon1:
+    vecOfCommon: List[Common1] = attr.ib()

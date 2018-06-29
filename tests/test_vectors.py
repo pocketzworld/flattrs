@@ -2,7 +2,7 @@ from hypothesis import given
 from hypothesis.strategies import booleans, composite, lists
 from flattr import model_from_bytes, model_to_bytes
 
-from .models_vectors import VectorsOfScalars
+from .models_vectors import VectorsOfScalars, VectorOfCommon1
 from .strats import (
     uint8s,
     uint16s,
@@ -15,6 +15,7 @@ from .strats import (
     float32s,
     float64s,
 )
+from .test_common import common1s
 
 
 @composite
@@ -34,6 +35,16 @@ def vectors_of_scalars(draw):
     )
 
 
+@composite
+def vectors_of_common1s(draw):
+    return VectorOfCommon1(draw(lists(common1s())))
+
+
 @given(vectors_of_scalars())
 def test_vectors_of_scalars_rt(inst):
+    assert inst == model_from_bytes(inst.__class__, model_to_bytes(inst))
+
+
+@given(vectors_of_common1s())
+def test_vectors_of_common1s_rt(inst):
     assert inst == model_from_bytes(inst.__class__, model_to_bytes(inst))
