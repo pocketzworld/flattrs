@@ -74,6 +74,7 @@ def _make_fb_functions(cl):
     strings = []
     optional_strings = []
     byte_fields = []
+    optional_bytes = []
     tables = []
     optional_tables = []
     lists_of_tables = []
@@ -96,6 +97,8 @@ def _make_fb_functions(cl):
                 # This is an optional field.
                 if union_args[0] is str:
                     optional_strings.append(field.name)
+                elif union_args[0] is bytes:
+                    optional_bytes.append(field.name)
                 elif has(union_args[0]):
                     optional_tables.append(field.name)
                 elif issubclass(union_args[0], IntEnum):
@@ -145,6 +148,7 @@ def _make_fb_functions(cl):
             strings,
             optional_strings,
             byte_fields,
+            optional_bytes,
             tables,
             optional_tables,
             lists_of_tables,
@@ -163,6 +167,8 @@ def _make_fb_functions(cl):
             cl,
             strings,
             optional_strings,
+            byte_fields,
+            optional_bytes,
             enums,
             tables,
             optional_tables,
@@ -177,9 +183,9 @@ def _make_fb_functions(cl):
 
 def model_to_bytes(inst, builder: Optional[Builder] = None) -> bytes:
     builder = Builder(10000) if builder is None else builder
-    byte_items, fb_items = inst.__fb_nonnestables__()
+    fb_items = inst.__fb_nonnestables__()
     string_offsets = {}
-    node_offsets = {id(bi): builder.CreateString(bi) for bi in byte_items}
+    node_offsets = {}
 
     for fb_item, fb_type, fb_vec_start in fb_items:
         if fb_type is FBItemType.VECTOR:
@@ -242,25 +248,19 @@ def _make_nonnestables_fn(
     lines = []
     lines.append("def __fb_nonnestables__(self):")
 
-    lines.append("    byte_items = []")
     lines.append("    fb_items = []")
-
-    for byte_field in byte_fields:
-        lines.append(f"    byte_items.append(self.{byte_field})")
 
     for table_field in table_fields + [u[0] for u in unions]:
         lines.append(
-            f"    {table_field}_byte_items, {table_field}_items = self.{table_field}.__fb_nonnestables__()"
+            f"    {table_field}_items = self.{table_field}.__fb_nonnestables__()"
         )
-        lines.append(f"    byte_items.extend({table_field}_byte_items)")
         lines.append(f"    fb_items.extend({table_field}_items)")
 
     for table_field in optional_tables:
         lines.append(f"    if self.{table_field} is not None:")
         lines.append(
-            f"        {table_field}_byte_items, {table_field}_items = self.{table_field}.__fb_nonnestables__()"
+            f"        {table_field}_items = self.{table_field}.__fb_nonnestables__()"
         )
-        lines.append(f"        byte_items.extend({table_field}_byte_items)")
         lines.append(f"        fb_items.extend({table_field}_items)")
 
     for field, _ in lists_of_tables:
@@ -271,8 +271,7 @@ def _make_nonnestables_fn(
 
         lines.append(f"    {field}_items = self.{field}")
         lines.append(f"    for item in {field}_items:")
-        lines.append(f"        i_bs, i_is = item.__fb_nonnestables__()")
-        lines.append(f"        byte_items.extend(i_bs)")
+        lines.append(f"        i_is = item.__fb_nonnestables__()")
         lines.append(f"        fb_items.extend(i_is)")
         lines.append(f"    vec_start = {field}VectorStart")
         lines.append(
@@ -281,7 +280,7 @@ def _make_nonnestables_fn(
 
     lines.append("    fb_items.append((self, FBTable, None))")
 
-    lines.append("    return (byte_items, fb_items)")
+    lines.append("    return fb_items")
 
     sha1 = hashlib.sha1()
     sha1.update(name.encode("utf-8"))
@@ -304,6 +303,7 @@ def _make_add_to_builder_fn(
     string_fields: List[str],
     optional_strings: List[str],
     byte_fields: List[str],
+    optional_bytes: List[str],
     table_fields: List[str],
     optional_tables: List[str],
     lists_of_tables: List[Tuple[str, Type]],
@@ -334,6 +334,22 @@ def _make_add_to_builder_fn(
         )
         lines.append(
             f"        strs[__fb_self_{field}] = builder.CreateString(__fb_self_{field})"
+        )
+
+    for field in byte_fields:
+        lines.append(f"    __fb_self_{field} = self.{field}")
+        lines.append(f"    if id(__fb_self_{field}) not in nodes:")
+        lines.append(
+            f"        nodes[id(__fb_self_{field})] = builder.CreateByteVector(__fb_self_{field})"
+        )
+
+    for field in optional_bytes:
+        lines.append(f"    __fb_self_{field} = self.{field}")
+        lines.append(
+            f"    if __fb_self_{field} is not None and id(__fb_self_{field}) not in nodes:"
+        )
+        lines.append(
+            f"        nodes[id(__fb_self_{field})] = builder.CreateByteVector(__fb_self_{field})"
         )
 
     for field in lists_of_strings:
@@ -396,6 +412,25 @@ def _make_add_to_builder_fn(
         lines.append(f"    if __fb_self_{field} is not None:")
         lines.append(
             f"        {field_starter_name}(builder, strs[__fb_self_{field}])"
+        )
+
+    for field in byte_fields:
+        norm_field_name = f"{field[0].upper()}{field[1:]}"
+        field_starter_name = f"{name}Add{norm_field_name}"
+        field_start = getattr(mod, field_starter_name)
+        slot_num, default = _get_offsets_for_string(field_start)
+        lines.append(
+            f"    builder.PrependUOffsetTRelativeSlot({slot_num}, nodes[id(__fb_self_{field})], {default})"
+        )
+
+    for field in optional_bytes:
+        norm_field_name = f"{field[0].upper()}{field[1:]}"
+        field_starter_name = f"{name}Add{norm_field_name}"
+        field_start = getattr(mod, field_starter_name)
+        slot_num, default = _get_offsets_for_string(field_start)
+        lines.append(f"    if __fb_self_{field} is not None:")
+        lines.append(
+            f"        builder.PrependUOffsetTRelativeSlot({slot_num}, nodes[id(__fb_self_{field})], {default})"
         )
 
     for field in lists_of_strings:
@@ -514,6 +549,8 @@ def _make_from_fb_fn(
     cl,
     string_fields: List[str],
     optional_strings: List[str],
+    byte_fields: List[str],
+    optional_bytes: List[str],
     enum_fields: List[str],
     table_fields: List[str],
     optional_tables: List[str],
@@ -534,6 +571,11 @@ def _make_from_fb_fn(
     from_fb = "__fb_from_fb__"
     lines.append("@classmethod")
     lines.append("def __fb_from_fb__(cls, fb_instance):")
+    for fname in optional_bytes:
+        norm_field_name = f"{fname[0].upper()}{fname[1:]}"
+        lines.append(
+            f"    __fb_{fname} = fb_instance.{norm_field_name}AsNumpy()"
+        )
     lines.append("    return cls(")
     for field in fields(cl):
         fname = field.name
@@ -545,6 +587,14 @@ def _make_from_fb_fn(
         elif fname in optional_strings:
             lines.append(
                 f"        fb_instance.{norm_field_name}().decode('utf8') if fb_instance.{norm_field_name}() != b'' else None,"
+            )
+        elif fname in byte_fields:
+            lines.append(
+                f"        fb_instance.{norm_field_name}AsNumpy().tobytes(),"
+            )
+        elif fname in optional_bytes:
+            lines.append(
+                f"        __fb_{fname}.tobytes() if not isinstance(__fb_{fname}, int) else None,"
             )
         elif fname in enum_fields:
             enum_name = field.type.__name__
