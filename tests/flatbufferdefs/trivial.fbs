@@ -8,6 +8,14 @@ table JustAnOptionalString {
     id:string;
 }
 
+table JustBytes {
+    value: [uint8];
+}
+
+table JustOptionalBytes {
+    value: [uint8];
+}
+
 table JustAFloat {
     value: float;
 }

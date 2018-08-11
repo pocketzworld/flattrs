@@ -547,9 +547,7 @@ cdef class Builder(object):
         self.Prep(Fb_uint32_t.bytewidth, (l+1)*Fb_uint8_t.bytewidth)
         self.Place(0, &Fb_uint8_t)
 
-        ## @cond FLATBUFFERS_INTERNAL
         self.head = self.head - l
-        ## @endcond
 
         cdef char* c_string = x
 
@@ -557,21 +555,24 @@ cdef class Builder(object):
 
         return self.EndVector(l)
 
-    def CreateByteVector(self, x):
+    cpdef Py_ssize_t CreateByteVector(self, bytes x):
         """CreateString writes a byte vector."""
+        print(x)
 
         self.assertNotNested()
         self.nested = True
 
-        if not isinstance(x, (bytes, bytearray)):
-            raise TypeError("non-byte vector passed to CreateByteVector")
+        cdef l = len(x)
 
-        self.Prep(Fb_uint32_t.bytewidth, len(x)*Fb_uint8_t.bytewidth)
+        self.Prep(Fb_uint32_t.bytewidth, l*Fb_uint8_t.bytewidth)
 
-        l = len(x)
         self.head = self.head - l
 
-        return self.EndVector(len(x))
+        cdef char* c_string = x
+
+        memcpy(<void*>&self.buffer[self.head], c_string, l)
+
+        return self.EndVector(l)
 
     cdef void assertNested(self) except *:
         """

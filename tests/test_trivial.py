@@ -1,13 +1,15 @@
 """Test serialization and deserialization of common tables."""
 from struct import pack, unpack
 from hypothesis import given
-from hypothesis.strategies import composite, text, none, lists, floats
+from hypothesis.strategies import binary, composite, text, none, lists, floats
 
 from flattr import model_from_bytes, model_to_bytes
 
 from .models import (
     JustAString,
     JustAnOptionalString,
+    JustBytes,
+    JustOptionalBytes,
     JustAFloat,
     JustADouble,
     ListOfStrings,
@@ -22,6 +24,16 @@ def just_a_strings(draw):
 @composite
 def just_an_optional_strings(draw):
     return JustAnOptionalString(draw(text() | none()))
+
+
+@composite
+def just_bytes(draw):
+    return JustBytes(draw(binary()))
+
+
+@composite
+def just_optional_bytes(draw):
+    return JustOptionalBytes(draw(binary() | none()))
 
 
 @composite
@@ -49,6 +61,16 @@ def test_just_an_optional_string_rt(inst):
     # Remove then we update Flatbuffers.
     if not inst.id:
         inst.id = None
+    assert inst == model_from_bytes(inst.__class__, model_to_bytes(inst))
+
+
+@given(just_bytes())
+def test_just_bytes_rt(inst):
+    assert inst == model_from_bytes(inst.__class__, model_to_bytes(inst))
+
+
+@given(just_optional_bytes())
+def test_just_optional_bytes_rt(inst):
     assert inst == model_from_bytes(inst.__class__, model_to_bytes(inst))
 
 
