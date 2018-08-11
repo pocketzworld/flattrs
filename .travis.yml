@@ -1,0 +1,37 @@
+dist: trusty
+group: travis_latest
+sudo: false
+cache:
+  directories:
+    - $HOME/.cache/pip
+
+language: python
+
+
+matrix:
+  fast_finish: true
+
+  include:
+    - python: "3.6"
+      env: TOXENV=py36
+
+
+install:
+  - pip install tox
+
+
+script:
+  - tox
+
+
+before_install:
+  - pip install codecov
+
+
+after_success:
+  - tox -e coverage-report
+  - codecov
+
+
+notifications:
+  email: false
