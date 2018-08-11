@@ -17,5 +17,6 @@ setup(
     package_dir={"": "src"},
     ext_modules=ext_modules,
     zip_safe=False,
-    extras_require={"dev": ["pytest", "hypothesis"]},
+    extras_require={"dev": ["pytest", "hypothesis", "cython"]},
+    package_data={"": ["*.pxd", "*.pyx"]},
 )
