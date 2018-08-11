@@ -17,7 +17,7 @@ matrix:
 
 
 install:
-  - pip install tox
+  - pip install tox cython
 
 
 script:
