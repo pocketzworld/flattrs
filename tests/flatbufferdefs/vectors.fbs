@@ -19,3 +19,11 @@ table VectorsOfScalars {
 table VectorOfCommon1 {
     vecOfCommon: [Common1];
 }
+
+table ByteArrayTable {
+    contents: [ubyte];
+}
+
+table OptionalByteArrayTable {
+    contents: [ubyte];
+}

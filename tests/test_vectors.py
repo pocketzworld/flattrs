@@ -1,8 +1,13 @@
 from hypothesis import given
-from hypothesis.strategies import booleans, composite, lists
+from hypothesis.strategies import booleans, binary, composite, lists, none
 from flattr import model_from_bytes, model_to_bytes
 
-from .models_vectors import VectorsOfScalars, VectorOfCommon1
+from .models_vectors import (
+    VectorsOfScalars,
+    VectorOfCommon1,
+    ByteArrayTable,
+    OptionalByteArrayTable,
+)
 from .strats import (
     uint8s,
     uint16s,
@@ -40,6 +45,16 @@ def vectors_of_common1s(draw):
     return VectorOfCommon1(draw(lists(common1s())))
 
 
+@composite
+def bytearray_tables(draw):
+    return ByteArrayTable(draw(binary()))
+
+
+@composite
+def optional_bytearray_tables(draw):
+    return OptionalByteArrayTable(draw(binary() | none()))
+
+
 @given(vectors_of_scalars())
 def test_vectors_of_scalars_rt(inst):
     assert inst == model_from_bytes(inst.__class__, model_to_bytes(inst))
@@ -47,4 +62,14 @@ def test_vectors_of_scalars_rt(inst):
 
 @given(vectors_of_common1s())
 def test_vectors_of_common1s_rt(inst):
+    assert inst == model_from_bytes(inst.__class__, model_to_bytes(inst))
+
+
+@given(bytearray_tables())
+def test_bytearray_tables(inst):
+    assert inst == model_from_bytes(inst.__class__, model_to_bytes(inst))
+
+
+@given(optional_bytearray_tables())
+def test_optional_bytearray_tables(inst):
     assert inst == model_from_bytes(inst.__class__, model_to_bytes(inst))
