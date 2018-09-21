@@ -657,7 +657,7 @@ def _make_from_fb_fn(
 
             globs[dn] = union_resolution_dict
             lines.append(
-                f"    {dn}[fb_instance.{norm_field_name}Type()](fb_instance.{norm_field_name}())"
+                f"        {dn}[fb_instance.{norm_field_name}Type()](fb_instance.{norm_field_name}()),"
             )
         elif fname in lists_of_scalar_names:
             for_ = f"for i in range(fb_instance.{norm_field_name}Length())"
