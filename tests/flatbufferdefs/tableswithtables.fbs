@@ -1,0 +1,13 @@
+include "common.fbs";
+
+namespace flattrs_test;
+
+table ContainsTable {
+    inner: Common1 (required);
+}
+
+union CommonUnion { Common1, AllScalars }
+
+table UnionOfTables {
+    innerUnion: CommonUnion (required);
+}
