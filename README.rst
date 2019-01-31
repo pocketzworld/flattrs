@@ -5,7 +5,7 @@
 Changelog:
 ----------
 
-0.1.2 (UNRELEASED)
+0.1.2 (2019-01-31)
 ~~~~~~~~~~~~~~~~~~
 * Fixed an issue with unions of tables from another namespace.
 * Removed spurious print when serializing byte arrays.
