@@ -1,4 +1,5 @@
 include "common.fbs";
+include "nested/nested_trivial.fbs";
 
 namespace flattrs_test;
 
@@ -10,4 +11,10 @@ union CommonUnion { Common1, AllScalars }
 
 table UnionOfTables {
     innerUnion: CommonUnion (required);
+}
+
+union NestedUnion { Common1, nested.NestedJustAString }
+
+table UnionOfNestedTables {
+    innerUnion: NestedUnion (required);
 }

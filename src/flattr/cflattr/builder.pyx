@@ -557,8 +557,6 @@ cdef class Builder(object):
 
     cpdef Py_ssize_t CreateByteVector(self, bytes x):
         """CreateString writes a byte vector."""
-        print(x)
-
         self.assertNotNested()
         self.nested = True
 

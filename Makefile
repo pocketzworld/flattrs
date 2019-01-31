@@ -1,6 +1,7 @@
 WHEEL_DOCKER_IMAGE := quay.io/pypa/manylinux1_x86_64
 
 fbs:
+	flatc --python -o tests tests/flatbufferdefs/*/*.fbs
 	flatc --python -o tests tests/flatbufferdefs/*.fbs
 
 wheels:

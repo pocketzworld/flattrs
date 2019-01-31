@@ -1,0 +1,5 @@
+namespace flattrs_test.nested;
+
+table NestedJustAString {
+    id:string (required);
+}

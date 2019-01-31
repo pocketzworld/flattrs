@@ -485,7 +485,12 @@ def _make_add_to_builder_fn(
         field_start = getattr(mod, field_starter_name)
 
         union_dict_name = f"{norm_field_name}_union_types"
-        union_dict = {t: getattr(fb_enum, t.__name__) for t in union_types}
+        # Unions might be prefixed by a namespace string, depending on how
+        # they're defined.
+        stripped_union_dict = {
+            k.split("_")[-1]: v for k, v in fb_enum.__dict__.items()
+        }
+        union_dict = {t: stripped_union_dict[t.__name__] for t in union_types}
 
         globs[type_adder_name] = type_adder
         globs[field_starter_name] = field_start
@@ -586,7 +591,7 @@ def _make_from_fb_fn(
             )
         elif fname in optional_strings:
             lines.append(
-                f"        fb_instance.{norm_field_name}().decode('utf8') if fb_instance.{norm_field_name}() != b'' else None,"
+                f"        fb_instance.{norm_field_name}().decode('utf8') if fb_instance.{norm_field_name}() is not None else None,"
             )
         elif fname in byte_fields:
             lines.append(
@@ -642,7 +647,12 @@ def _make_from_fb_fn(
             union_resolution_dict = {}
 
             for union_type in union_types:
-                code = getattr(union_enum, union_type.__name__)
+                # Unions might be prefixed by a namespace string, depending on how
+                # they're defined.
+                stripped_union_dict = {
+                    k.split("_")[-1]: v for k, v in union_enum.__dict__.items()
+                }
+                code = stripped_union_dict[union_type.__name__]
                 fb_cls = union_type.__fb_class__
                 attr_model = union_type
 
