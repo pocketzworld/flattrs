@@ -4,9 +4,8 @@
 
 import flatbuffers
 
-
 class UnionOfNestedTables(object):
-    __slots__ = ["_tab"]
+    __slots__ = ['_tab']
 
     @classmethod
     def GetRootAsUnionOfNestedTables(cls, buf, offset):
@@ -23,9 +22,7 @@ class UnionOfNestedTables(object):
     def InnerUnionType(self):
         o = flatbuffers.number_types.UOffsetTFlags.py_type(self._tab.Offset(4))
         if o != 0:
-            return self._tab.Get(
-                flatbuffers.number_types.Uint8Flags, o + self._tab.Pos
-            )
+            return self._tab.Get(flatbuffers.number_types.Uint8Flags, o + self._tab.Pos)
         return 0
 
     # UnionOfNestedTables
@@ -33,26 +30,12 @@ class UnionOfNestedTables(object):
         o = flatbuffers.number_types.UOffsetTFlags.py_type(self._tab.Offset(6))
         if o != 0:
             from flatbuffers.table import Table
-
             obj = Table(bytearray(), 0)
             self._tab.Union(obj, o)
             return obj
         return None
 
-
-def UnionOfNestedTablesStart(builder):
-    builder.StartObject(2)
-
-
-def UnionOfNestedTablesAddInnerUnionType(builder, innerUnionType):
-    builder.PrependUint8Slot(0, innerUnionType, 0)
-
-
-def UnionOfNestedTablesAddInnerUnion(builder, innerUnion):
-    builder.PrependUOffsetTRelativeSlot(
-        1, flatbuffers.number_types.UOffsetTFlags.py_type(innerUnion), 0
-    )
-
-
-def UnionOfNestedTablesEnd(builder):
-    return builder.EndObject()
+def UnionOfNestedTablesStart(builder): builder.StartObject(2)
+def UnionOfNestedTablesAddInnerUnionType(builder, innerUnionType): builder.PrependUint8Slot(0, innerUnionType, 0)
+def UnionOfNestedTablesAddInnerUnion(builder, innerUnion): builder.PrependUOffsetTRelativeSlot(1, flatbuffers.number_types.UOffsetTFlags.py_type(innerUnion), 0)
+def UnionOfNestedTablesEnd(builder): return builder.EndObject()

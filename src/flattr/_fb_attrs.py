@@ -80,6 +80,7 @@ def _make_fb_functions(cl):
     lists_of_tables = []
     lists_of_strings = []
     lists_of_scalars = []  # type: List[Tuple[str, Type, Any]]
+    lists_of_enums = []  # type: List[Tuple[str, Type, Any]]
     enums = []
     inlines = []
     unions = []
@@ -119,6 +120,10 @@ def _make_fb_functions(cl):
                 lists_of_scalars.append(
                     (field.name, arg, _get_scalar_list_type(cl, field.name))
                 )
+            elif issubclass(arg, IntEnum):
+                lists_of_enums.append(
+                    (field.name, arg, _get_scalar_list_type(cl, field.name))
+                )
         elif issubclass(type, IntEnum):
             enums.append(field.name)
         else:
@@ -153,7 +158,7 @@ def _make_fb_functions(cl):
             optional_tables,
             lists_of_tables,
             lists_of_strings,
-            lists_of_scalars,
+            lists_of_scalars + lists_of_enums,
             inlines + enums,
             unions,
         ),
@@ -177,6 +182,7 @@ def _make_fb_functions(cl):
             unions,
             inlines,
             lists_of_scalars,
+            lists_of_enums,
         ),
     )
 
@@ -564,6 +570,7 @@ def _make_from_fb_fn(
     union_fields: List[Tuple[str, List[Type], Type]],
     inlines: List[str],
     lists_of_scalars: List[Tuple[str, Type]],
+    lists_of_enums: List[Tuple[str, Type, Any]],
 ) -> Callable:
     """Compile a function to init an attrs model from a FB model."""
     name = cl.__fb_class__.__name__
@@ -572,6 +579,7 @@ def _make_from_fb_fn(
     table_field_names = {t[0]: t[1] for t in lists_of_tables}
     union_field_names = {t[0]: t for t in union_fields}
     lists_of_scalar_names = {t[0]: t[1] for t in lists_of_scalars}
+    lists_of_enum_names = {t[0]: t for t in lists_of_enums}
 
     from_fb = "__fb_from_fb__"
     lines.append("@classmethod")
@@ -672,6 +680,14 @@ def _make_from_fb_fn(
         elif fname in lists_of_scalar_names:
             for_ = f"for i in range(fb_instance.{norm_field_name}Length())"
             lines.append(f"        [fb_instance.{norm_field_name}(i) {for_}],")
+        elif fname in lists_of_enum_names:
+            enum_type = lists_of_enum_names[fname][1]
+            dn = f"_{fname}_enum"
+            globs[dn] = enum_type
+            for_ = f"for i in range(fb_instance.{norm_field_name}Length())"
+            lines.append(
+                f"        [{dn}(fb_instance.{norm_field_name}(i)) {for_}],"
+            )
         else:
             raise ValueError(f"Can't handle {fname} (type {field.type}).")
 

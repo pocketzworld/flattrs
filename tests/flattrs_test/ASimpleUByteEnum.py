@@ -2,8 +2,7 @@
 
 # namespace: flattrs_test
 
-class NestedUnion(object):
-    NONE = 0
-    Common1 = 1
-    nested_NestedJustAString = 2
+class ASimpleUByteEnum(object):
+    ONE = 0
+    TWO = 1
 

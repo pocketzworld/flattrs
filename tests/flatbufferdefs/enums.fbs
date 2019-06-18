@@ -1,0 +1,6 @@
+namespace flattrs_test;
+
+enum ASimpleUByteEnum: ubyte {
+    ONE,
+    TWO,
+}

@@ -5,6 +5,10 @@
 Changelog:
 ----------
 
+0.1.3 (2019-06-18)
+~~~~~~~~~~~~~~~~~~
+* Support lists of int enums.
+
 0.1.2 (2019-01-31)
 ~~~~~~~~~~~~~~~~~~
 * Fixed an issue with unions of tables from another namespace.

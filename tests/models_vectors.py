@@ -7,8 +7,10 @@ from .flattrs_test.VectorsOfScalars import VectorsOfScalars
 from .flattrs_test.VectorOfCommon1 import VectorOfCommon1
 from .flattrs_test.ByteArrayTable import ByteArrayTable
 from .flattrs_test.OptionalByteArrayTable import OptionalByteArrayTable
+from .flattrs_test.VectorOfEnums import VectorOfEnums
 
 from .models_common import Common1
+from .models_enums import ASimpleUByteEnum
 
 
 @Flatbuffer(VectorsOfScalars)
@@ -39,3 +41,8 @@ class ByteArrayTable:
 @Flatbuffer(OptionalByteArrayTable)
 class OptionalByteArrayTable:
     contents: Optional[bytes] = attr.ib()
+
+
+@Flatbuffer(VectorOfEnums)
+class VectorOfEnums:
+    enums: List[ASimpleUByteEnum] = attr.ib()

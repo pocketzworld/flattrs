@@ -1,24 +1,34 @@
 from hypothesis import given
-from hypothesis.strategies import booleans, binary, composite, lists, none
+from hypothesis.strategies import (
+    binary,
+    booleans,
+    composite,
+    lists,
+    none,
+    sampled_from,
+)
+
 from flattr import model_from_bytes, model_to_bytes
 
+from .models_enums import ASimpleUByteEnum
 from .models_vectors import (
-    VectorsOfScalars,
-    VectorOfCommon1,
     ByteArrayTable,
     OptionalByteArrayTable,
+    VectorOfCommon1,
+    VectorOfEnums,
+    VectorsOfScalars,
 )
 from .strats import (
-    uint8s,
-    uint16s,
-    uint32s,
-    uint64s,
+    float32s,
+    float64s,
     int8s,
     int16s,
     int32s,
     int64s,
-    float32s,
-    float64s,
+    uint8s,
+    uint16s,
+    uint32s,
+    uint64s,
 )
 from .test_common import common1s
 
@@ -51,6 +61,11 @@ def bytearray_tables(draw):
 
 
 @composite
+def vectors_of_enums(draw):
+    return VectorOfEnums(draw(lists(sampled_from(ASimpleUByteEnum))))
+
+
+@composite
 def optional_bytearray_tables(draw):
     return OptionalByteArrayTable(draw(binary() | none()))
 
@@ -72,4 +87,9 @@ def test_bytearray_tables(inst):
 
 @given(optional_bytearray_tables())
 def test_optional_bytearray_tables(inst):
+    assert inst == model_from_bytes(inst.__class__, model_to_bytes(inst))
+
+
+@given(vectors_of_enums())
+def test_vectors_of_enums(inst):
     assert inst == model_from_bytes(inst.__class__, model_to_bytes(inst))

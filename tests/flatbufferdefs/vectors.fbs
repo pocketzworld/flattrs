@@ -1,4 +1,5 @@
 include "common.fbs";
+include "enums.fbs";
 
 namespace flattrs_test;
 
@@ -26,4 +27,8 @@ table ByteArrayTable {
 
 table OptionalByteArrayTable {
     contents: [ubyte];
+}
+
+table VectorOfEnums {
+    enums: [ASimpleUByteEnum];
 }
