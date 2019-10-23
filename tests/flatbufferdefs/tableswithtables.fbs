@@ -18,3 +18,7 @@ union NestedUnion { Common1, nested.NestedJustAString }
 table UnionOfNestedTables {
     innerUnion: NestedUnion (required);
 }
+
+table UnionOfOptionalTables {
+    innerUnion: CommonUnion (required);
+}

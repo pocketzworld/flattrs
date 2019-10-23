@@ -83,7 +83,7 @@ def _make_fb_functions(cl):
     lists_of_enums = []  # type: List[Tuple[str, Type, Any]]
     enums = []
     inlines = []
-    unions = []
+    unions: Tuple[str, List[Type], Any] = []
     for field in fields(cl):
         type = field.type
         if type is str:
@@ -256,11 +256,24 @@ def _make_nonnestables_fn(
 
     lines.append("    fb_items = []")
 
-    for table_field in table_fields + [u[0] for u in unions]:
+    for table_field in table_fields:
         lines.append(
             f"    {table_field}_items = self.{table_field}.__fb_nonnestables__()"
         )
         lines.append(f"    fb_items.extend({table_field}_items)")
+
+    for table_field, union_classes, union_enum in unions:
+        if none_type not in union_classes:
+            lines.append(
+                f"    {table_field}_items = self.{table_field}.__fb_nonnestables__()"
+            )
+            lines.append(f"    fb_items.extend({table_field}_items)")
+        else:
+            lines.append(f"    if self.{table_field} is not None:")
+            lines.append(
+                f"        {table_field}_items = self.{table_field}.__fb_nonnestables__()"
+            )
+            lines.append(f"        fb_items.extend({table_field}_items)")
 
     for table_field in optional_tables:
         lines.append(f"    if self.{table_field} is not None:")
@@ -316,7 +329,7 @@ def _make_add_to_builder_fn(
     lists_of_strings: List[str],
     lists_of_scalars: List[Tuple[str, Type]],
     inlines: List[str],
-    unions: List[Tuple[str, Type]],
+    unions: List[Tuple[str, Type, Type]],
 ):
     name = cl.__fb_class__.__name__
     mod = cl.__fb_module__
@@ -496,7 +509,16 @@ def _make_add_to_builder_fn(
         stripped_union_dict = {
             k.split("_")[-1]: v for k, v in fb_enum.__dict__.items()
         }
-        union_dict = {t: stripped_union_dict[t.__name__] for t in union_types}
+        union_dict = {
+            t: stripped_union_dict[t.__name__]
+            for t in union_types
+            if t is not none_type
+        }
+        # Flatbuffer unions always have a special member, NONE, signifying
+        # a missing value. If None is part of union_types, we handle it
+        # specially.
+        if none_type in union_types:
+            union_dict[none_type] = stripped_union_dict["NONE"]
 
         globs[type_adder_name] = type_adder
         globs[field_starter_name] = field_start
@@ -504,9 +526,15 @@ def _make_add_to_builder_fn(
         lines.append(
             f"    {type_adder_name}(builder, {union_dict_name}[self.{field}.__class__])"
         )
-        lines.append(
-            f"    {field_starter_name}(builder, nodes[id(self.{field})])"
-        )
+        if none_type in union_types:
+            lines.append(f"    if self.{field} is not None:")
+            lines.append(
+                f"        {field_starter_name}(builder, nodes[id(self.{field})])"
+            )
+        else:
+            lines.append(
+                f"    {field_starter_name}(builder, nodes[id(self.{field})])"
+            )
 
     lines.append("    return builder.EndObject()")
     lines.append("")
@@ -653,13 +681,13 @@ def _make_from_fb_fn(
             _, union_types, union_enum = union_field_names[fname]
             dn = f"_{fname}_union_dict"
             union_resolution_dict = {}
+            stripped_union_dict: Dict[str, Any] = {
+                k.split("_")[-1]: v for k, v in union_enum.__dict__.items()
+            }
 
-            for union_type in union_types:
+            for union_type in [u for u in union_types if u is not none_type]:
                 # Unions might be prefixed by a namespace string, depending on how
                 # they're defined.
-                stripped_union_dict = {
-                    k.split("_")[-1]: v for k, v in union_enum.__dict__.items()
-                }
                 code = stripped_union_dict[union_type.__name__]
                 fb_cls = union_type.__fb_class__
                 attr_model = union_type
@@ -672,6 +700,10 @@ def _make_from_fb_fn(
                     return attr_model.__fb_from_fb__(res)
 
                 union_resolution_dict[code] = _load_from_content
+
+            if none_type in union_types:
+                none_code = getattr(union_enum, "NONE")
+                union_resolution_dict[none_code] = lambda _: None
 
             globs[dn] = union_resolution_dict
             lines.append(
