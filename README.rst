@@ -5,6 +5,10 @@
 Changelog:
 ----------
 
+0.1.4 (2019-10-23)
+~~~~~~~~~~~~~~~~~~
+* Support optional unions.
+
 0.1.3 (2019-06-18)
 ~~~~~~~~~~~~~~~~~~
 * Support lists of int enums.
