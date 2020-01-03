@@ -2,24 +2,25 @@ import hashlib
 import linecache
 from enum import Enum, IntEnum, unique
 from sys import modules
-from typing import Any, Callable, List, Set, Optional, Type, Tuple, Union
+from typing import Any, Callable, List, Optional, Set, Tuple, Type, Union
 
 import attr
 from attr import fields, has
-
 from flatbuffers.number_types import (
     BoolFlags,
-    Uint8Flags,
-    Uint16Flags,
-    Uint32Flags,
-    Uint64Flags,
+    Float32Flags,
+    Float64Flags,
     Int8Flags,
     Int16Flags,
     Int32Flags,
     Int64Flags,
-    Float32Flags,
-    Float64Flags,
+    Uint8Flags,
+    Uint16Flags,
+    Uint32Flags,
+    Uint64Flags,
 )
+
+from ._compat import is_py36
 
 try:
     from .cflattr.builder import Builder
@@ -63,6 +64,17 @@ def FlatbufferEnum(fb_cl):
 
 
 none_type = type(None)
+if is_py36:
+
+    def is_generic_subclass(t, s):
+        return issubclass(t, s)
+
+
+else:
+    from typing import _GenericAlias
+
+    def is_generic_subclass(t, s):
+        return isinstance(t, _GenericAlias) and t.__origin__ is s
 
 
 def _make_fb_functions(cl):
@@ -110,7 +122,7 @@ def _make_fb_functions(cl):
                 unions.append(
                     (field.name, type.__args__, field.metadata[UNION_CL])
                 )
-        elif issubclass(type, List):
+        elif is_generic_subclass(type, list):
             arg = type.__args__[0]
             if arg is str:
                 lists_of_strings.append(field.name)
