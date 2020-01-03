@@ -2,7 +2,7 @@ import hashlib
 import linecache
 from enum import Enum, IntEnum, unique
 from sys import modules
-from typing import Any, Callable, List, Optional, Set, Tuple, Type, Union
+from typing import Any, Callable, Dict, List, Optional, Set, Tuple, Type, Union
 
 import attr
 from attr import fields, has
