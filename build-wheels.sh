@@ -2,7 +2,7 @@
 set -e -x
 
 # Compile wheels
-for PYBIN in /opt/python/cp3{5,6,7}*/bin; do
+for PYBIN in /opt/python/cp3{5,6,7,8}*/bin; do
     "${PYBIN}/pip" install /io/
     "${PYBIN}/pip" wheel /io/ -w wheelhouse/
 done

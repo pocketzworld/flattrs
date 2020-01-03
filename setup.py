@@ -19,4 +19,5 @@ setup(
     zip_safe=False,
     extras_require={"dev": ["pytest", "hypothesis", "cython"]},
     package_data={"": ["*.pxd", "*.pyx"]},
+    license="MIT license",
 )
