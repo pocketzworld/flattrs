@@ -4,6 +4,9 @@ fbs:
 	flatc --python -o tests tests/flatbufferdefs/*/*.fbs
 	flatc --python -o tests tests/flatbufferdefs/*.fbs
 
+coverage:
+	coverage run --source=flattr -m pytest
+
 wheels:
 	rm -rf wheelhouse build &&\
 	docker pull $(WHEEL_DOCKER_IMAGE) &&\

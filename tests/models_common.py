@@ -1,19 +1,18 @@
 import attr
-from flattr import Flatbuffer
+from flattr import Flatbuffer, from_package
 
-from .flattrs_test.Common1 import Common1
-from .flattrs_test.AllScalars import AllScalars
+from . import flattrs_test
 from .flattrs_test.AllScalarsWithDefaults import AllScalarsWithDefaults
 
 
-@Flatbuffer(Common1)
+@Flatbuffer.from_package(flattrs_test)
 class Common1:
     id: str = attr.ib()
     aSmallInt: int = attr.ib()
     aBigInt: int = attr.ib()
 
 
-@Flatbuffer(AllScalars)
+@from_package(flattrs_test)
 class AllScalars:
     boolean: bool = attr.ib()
     uint8: int = attr.ib()

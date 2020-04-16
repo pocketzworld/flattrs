@@ -19,6 +19,7 @@ from flatbuffers.number_types import (
     Uint32Flags,
     Uint64Flags,
 )
+from importlib import import_module
 
 from ._compat import is_py36
 
@@ -31,9 +32,9 @@ except ImportError:
 UNION_CL = "__fb_union_cl"
 
 
-def Flatbuffer(fb_cl):
+def Flatbuffer(fb_cl, frozen: bool = False):
     def wrapper(cl):
-        res = attr.s(slots=True)(cl)
+        res = attr.s(slots=True, frozen=frozen)(cl)
         res.__fb_module__ = modules[fb_cl.__module__]
         res.__fb_class__ = fb_cl
         _make_fb_functions(res)
@@ -61,6 +62,30 @@ def FlatbufferEnum(fb_cl):
         return res
 
     return wrapper
+
+
+def from_package(pkg, frozen: bool = False):
+    def wrap_cls(cl):
+        cl_name = cl.__name__
+        module = import_module(f"{pkg.__package__}.{cl_name}")
+        fb_cl = getattr(module, cl_name)
+        return Flatbuffer(fb_cl, frozen=frozen)(cl)
+
+    return wrap_cls
+
+
+def from_package_enum(pkg):
+    def wrap_cls(cl):
+        cl_name = cl.__name__
+        module = import_module(f"{pkg.__package__}.{cl_name}")
+        fb_cl = getattr(module, cl_name)
+        return FlatbufferEnum(fb_cl)(cl)
+
+    return wrap_cls
+
+
+Flatbuffer.from_package = from_package
+FlatbufferEnum.from_package = from_package_enum
 
 
 none_type = type(None)

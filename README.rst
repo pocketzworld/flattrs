@@ -5,6 +5,12 @@
 Changelog:
 ----------
 
+0.1.6 (UNRELEASED)
+~~~~~~~~~~~~~~~~~~
+* `flattr.from_package`, `flattr.from_package_enum`, `Flatbuffer.from_package` and `FlatbufferEnum.from_package` convenience aliases.
+* Include `py.typed` for Mypy to pick up.
+* Drop Python 3.5 support.
+
 0.1.5 (2020-01-03)
 ~~~~~~~~~~~~~~~~~~
 * 3.7 and 3.8 support.

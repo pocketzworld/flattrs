@@ -4,3 +4,8 @@ enum ASimpleUByteEnum: ubyte {
     ONE,
     TWO,
 }
+
+enum ASimpleByteEnum: byte {
+    ONE,
+    TWO,
+}

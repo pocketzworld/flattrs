@@ -1,7 +1,15 @@
 """Test serialization and deserialization of common tables."""
 from struct import pack, unpack
 from hypothesis import given
-from hypothesis.strategies import binary, composite, text, none, lists, floats
+from hypothesis.strategies import (
+    binary,
+    composite,
+    text,
+    none,
+    lists,
+    floats,
+    sampled_from,
+)
 
 from flattr import model_from_bytes, model_to_bytes
 
@@ -12,8 +20,10 @@ from .models import (
     JustOptionalBytes,
     JustAFloat,
     JustADouble,
+    JustAnEnum,
     ListOfStrings,
 )
+from .models_enums import ASimpleByteEnum
 
 
 @composite
@@ -44,6 +54,11 @@ def just_a_floats(draw):
 @composite
 def just_a_doubles(draw):
     return JustADouble(draw(floats(allow_nan=False)))
+
+
+@composite
+def just_a_byte_enums(draw):
+    return JustAnEnum(draw(sampled_from(ASimpleByteEnum)))
 
 
 @composite
@@ -81,6 +96,11 @@ def test_just_a_float_rt(inst):
 
 @given(just_a_doubles())
 def test_just_a_double_rt(inst):
+    assert inst == model_from_bytes(inst.__class__, model_to_bytes(inst))
+
+
+@given(just_a_byte_enums())
+def test_just_a_simple_byte_enum_rt(inst):
     assert inst == model_from_bytes(inst.__class__, model_to_bytes(inst))
 
 

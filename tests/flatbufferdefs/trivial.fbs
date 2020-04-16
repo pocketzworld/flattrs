@@ -1,3 +1,5 @@
+include "enums.fbs";
+
 namespace flattrs_test;
 
 table JustAString {
@@ -22,6 +24,10 @@ table JustAFloat {
 
 table JustADouble {
     value: double;
+}
+
+table JustAnEnum {
+    value: flattrs_test.ASimpleByteEnum;
 }
 
 table ListOfStrings {
