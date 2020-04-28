@@ -5,11 +5,14 @@ from . import flattrs_test
 from .flattrs_test.AllScalarsWithDefaults import AllScalarsWithDefaults
 
 
-@Flatbuffer.from_package(flattrs_test)
+@Flatbuffer.from_package(flattrs_test, repr=False)
 class Common1:
     id: str = attr.ib()
     aSmallInt: int = attr.ib()
     aBigInt: int = attr.ib()
+
+    def __repr__(self):
+        return f"{self.id}:{self.aSmallInt}:{self.aBigInt}"
 
 
 @from_package(flattrs_test)

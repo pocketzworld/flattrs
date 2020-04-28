@@ -63,6 +63,12 @@ def test_common1(inst):
     assert inst == model_from_bytes(inst.__class__, model_to_bytes(inst))
 
 
+@given(common1s())
+def test_common1_repr(inst):
+    """Common1 has an overriden repr."""
+    assert repr(inst) == f"{inst.id}:{inst.aSmallInt}:{inst.aBigInt}"
+
+
 @given(all_scalars())
 def test_all_scalars(inst):
     assert inst == model_from_bytes(inst.__class__, model_to_bytes(inst))

@@ -5,6 +5,10 @@
 Changelog:
 ----------
 
+0.1.7 (2020-04-28)
+~~~~~~~~~~~~~~~~~~
+* `flattr.from_package`, `Flatbuffer.from_package` and `Flatbuffer` now accept `repr`.
+
 0.1.6 (2020-04-16)
 ~~~~~~~~~~~~~~~~~~
 * `flattr.from_package`, `flattr.from_package_enum`, `Flatbuffer.from_package` and `FlatbufferEnum.from_package` convenience aliases.
