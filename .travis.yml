@@ -24,6 +24,7 @@ matrix:
       sudo: true
     - python: "3.9-dev"
       env: TOXENV=py39
+      dist: xenial
 
 
 install:
