@@ -1,6 +1,6 @@
 from platform import python_implementation
 
-from setuptools import setup, find_packages
+from setuptools import find_packages, setup
 
 if python_implementation() != "PyPy":
     from Cython.Build import cythonize
@@ -11,7 +11,7 @@ else:
 
 setup(
     name="flattrs",
-    version="0.1.7",
+    version="0.1.8",
     install_requires=["attrs", "flatbuffers==1.9", "numpy"],
     packages=find_packages(where="src"),
     package_dir={"": "src"},
