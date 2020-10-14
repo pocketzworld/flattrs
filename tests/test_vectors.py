@@ -1,12 +1,5 @@
 from hypothesis import given
-from hypothesis.strategies import (
-    binary,
-    booleans,
-    composite,
-    lists,
-    none,
-    sampled_from,
-)
+from hypothesis.strategies import binary, booleans, composite, lists, none, sampled_from
 
 from flattr import model_from_bytes, model_to_bytes
 
@@ -14,6 +7,9 @@ from .models_enums import ASimpleUByteEnum
 from .models_vectors import (
     ByteArrayTable,
     OptionalByteArrayTable,
+    SeqVectorOfCommon1,
+    SeqVectorOfEnums,
+    SeqVectorsOfScalars,
     VectorOfCommon1,
     VectorOfEnums,
     VectorsOfScalars,
@@ -51,8 +47,30 @@ def vectors_of_scalars(draw):
 
 
 @composite
+def seq_vectors_of_scalars(draw):
+    return SeqVectorsOfScalars(
+        tuple(draw(lists(booleans()))),
+        tuple(draw(lists(uint8s))),
+        tuple(draw(lists(uint16s))),
+        tuple(draw(lists(uint32s))),
+        tuple(draw(lists(uint64s))),
+        tuple(draw(lists(int8s))),
+        tuple(draw(lists(int16s))),
+        tuple(draw(lists(int32s))),
+        tuple(draw(lists(int64s))),
+        tuple(draw(lists(float32s))),
+        tuple(draw(lists(float64s))),
+    )
+
+
+@composite
 def vectors_of_common1s(draw):
     return VectorOfCommon1(draw(lists(common1s())))
+
+
+@composite
+def seq_vectors_of_common1s(draw):
+    return SeqVectorOfCommon1(tuple(draw(lists(common1s()))))
 
 
 @composite
@@ -66,6 +84,11 @@ def vectors_of_enums(draw):
 
 
 @composite
+def seq_vectors_of_enums(draw):
+    return SeqVectorOfEnums(tuple(draw(lists(sampled_from(ASimpleUByteEnum)))))
+
+
+@composite
 def optional_bytearray_tables(draw):
     return OptionalByteArrayTable(draw(binary() | none()))
 
@@ -75,8 +98,18 @@ def test_vectors_of_scalars_rt(inst):
     assert inst == model_from_bytes(inst.__class__, model_to_bytes(inst))
 
 
+@given(seq_vectors_of_scalars())
+def test_seq_vectors_of_scalars_rt(inst):
+    assert inst == model_from_bytes(inst.__class__, model_to_bytes(inst))
+
+
 @given(vectors_of_common1s())
 def test_vectors_of_common1s_rt(inst):
+    assert inst == model_from_bytes(inst.__class__, model_to_bytes(inst))
+
+
+@given(seq_vectors_of_common1s())
+def test_seq_vectors_of_common1s_rt(inst):
     assert inst == model_from_bytes(inst.__class__, model_to_bytes(inst))
 
 
@@ -92,4 +125,9 @@ def test_optional_bytearray_tables(inst):
 
 @given(vectors_of_enums())
 def test_vectors_of_enums(inst):
+    assert inst == model_from_bytes(inst.__class__, model_to_bytes(inst))
+
+
+@given(seq_vectors_of_enums())
+def test_seq_vectors_of_enums(inst):
     assert inst == model_from_bytes(inst.__class__, model_to_bytes(inst))
