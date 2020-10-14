@@ -5,6 +5,11 @@
 Changelog:
 ----------
 
+0.1.8 (2020-10-15)
+~~~~~~~~~~~~~~~~~~
+* Add support for `typing.Sequence[T]` (deserializes to tuples).
+* Python 3.9 support.
+
 0.1.7 (2020-04-28)
 ~~~~~~~~~~~~~~~~~~
 * `flattr.from_package`, `Flatbuffer.from_package` and `Flatbuffer` now accept `repr`.
