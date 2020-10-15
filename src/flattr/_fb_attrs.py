@@ -265,10 +265,12 @@ def model_to_bytes(inst, builder: Optional[Builder] = None) -> bytes:
             offset = builder.EndVector(len(fb_item))
             node_offsets[id(fb_item)] = offset
         else:
-            offset = fb_item.__fb_add_to_builder__(
-                builder, string_offsets, node_offsets
-            )
-            node_offsets[id(fb_item)] = offset
+            item_id = id(fb_item)
+            if item_id not in node_offsets:
+                offset = fb_item.__fb_add_to_builder__(
+                    builder, string_offsets, node_offsets
+                )
+                node_offsets[item_id] = offset
 
     builder.Finish(offset)  # Last offset.
     return bytes(builder.Output())
