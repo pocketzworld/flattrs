@@ -72,3 +72,8 @@ class VectorOfEnums:
 @from_package(flattrs_test, frozen=True)
 class SeqVectorOfEnums:
     enums: Sequence[ASimpleUByteEnum] = attr.ib()
+
+
+@from_package(flattrs_test, frozen=True)
+class SeqVectorOfStrings:
+    strings: Sequence[str] = attr.ib()

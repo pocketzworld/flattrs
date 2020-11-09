@@ -246,6 +246,7 @@ def _make_fb_functions(cl):
             seqs_of_tables,
             seqs_of_scalars,
             seqs_of_enums,
+            seqs_of_strings,
         ),
     )
 
@@ -644,6 +645,7 @@ def _make_from_fb_fn(
     seqs_of_tables: List[Tuple[str, Type]],
     seqs_of_scalars: List[Tuple[str, Type]],
     seqs_of_enums: List[Tuple[str, Type]],
+    seqs_of_strings: List[str],
 ) -> Callable:
     """Compile a function to init an attrs model from a FB model."""
     name = cl.__fb_class__.__name__
@@ -716,6 +718,11 @@ def _make_from_fb_fn(
             for_ = f"for i in range(fb_instance.{norm_field_name}Length())"
             lines.append(
                 f"        [fb_instance.{norm_field_name}(i).decode('utf8') {for_}],"
+            )
+        elif fname in seqs_of_strings:
+            for_ = f"for i in range(fb_instance.{norm_field_name}Length())"
+            lines.append(
+                f"        tuple(fb_instance.{norm_field_name}(i).decode('utf8') {for_}),"
             )
         elif fname in inlines:
             type = field.type

@@ -54,3 +54,7 @@ table VectorOfEnums {
 table SeqVectorOfEnums {
     enums: [ASimpleUByteEnum];
 }
+
+table SeqVectorOfStrings {
+    strings: [string];
+}

@@ -1,5 +1,13 @@
 from hypothesis import given
-from hypothesis.strategies import binary, booleans, composite, lists, none, sampled_from
+from hypothesis.strategies import (
+    binary,
+    booleans,
+    composite,
+    lists,
+    none,
+    sampled_from,
+    text,
+)
 
 from flattr import model_from_bytes, model_to_bytes
 
@@ -9,6 +17,7 @@ from .models_vectors import (
     OptionalByteArrayTable,
     SeqVectorOfCommon1,
     SeqVectorOfEnums,
+    SeqVectorOfStrings,
     SeqVectorsOfScalars,
     VectorOfCommon1,
     VectorOfEnums,
@@ -93,6 +102,11 @@ def optional_bytearray_tables(draw):
     return OptionalByteArrayTable(draw(binary() | none()))
 
 
+@composite
+def seq_vectors_of_strings(draw):
+    return SeqVectorOfStrings(tuple(draw(lists(text()))))
+
+
 @given(vectors_of_scalars())
 def test_vectors_of_scalars_rt(inst):
     assert inst == model_from_bytes(inst.__class__, model_to_bytes(inst))
@@ -130,4 +144,9 @@ def test_vectors_of_enums(inst):
 
 @given(seq_vectors_of_enums())
 def test_seq_vectors_of_enums(inst):
+    assert inst == model_from_bytes(inst.__class__, model_to_bytes(inst))
+
+
+@given(seq_vectors_of_strings())
+def test_seq_vectors_of_strings(inst):
     assert inst == model_from_bytes(inst.__class__, model_to_bytes(inst))
