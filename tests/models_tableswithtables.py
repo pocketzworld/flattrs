@@ -1,4 +1,4 @@
-from typing import Union
+from typing import Optional, Union
 
 import attr
 
@@ -18,3 +18,8 @@ class UnionOfTables:
 @from_package(flattrs_test)
 class ContainsTable:
     inner: Common1 = attr.ib()
+
+
+@from_package(flattrs_test)
+class OptionalTable:
+    inner: Optional[Common1] = attr.ib()

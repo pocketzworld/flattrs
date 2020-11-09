@@ -22,3 +22,7 @@ table UnionOfNestedTables {
 table UnionOfOptionalTables {
     innerUnion: CommonUnion (required);
 }
+
+table OptionalTable {
+    inner: Common1;
+}
