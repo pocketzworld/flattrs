@@ -5,6 +5,10 @@
 Changelog:
 ----------
 
+0.1.9 (2020-11-10)
+~~~~~~~~~~~~~~~~~~
+* Add support for `typing.Sequence[str]` (deserializes to tuples).
+
 0.1.8 (2020-10-15)
 ~~~~~~~~~~~~~~~~~~
 * Add support for `typing.Sequence[T]` (deserializes to tuples).
