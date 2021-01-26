@@ -127,10 +127,10 @@ def _make_fb_functions(cl):
     seqs_of_tables = []
     lists_of_strings = []
     seqs_of_strings = []
-    lists_of_scalars = []  # type: List[Tuple[str, Type, Any]]
-    seqs_of_scalars = []
-    lists_of_enums = []  # type: List[Tuple[str, Type, Any]]
-    seqs_of_enums = []
+    lists_of_scalars: List[Tuple[str, Type, Any, bool]] = []
+    seqs_of_scalars: List[Tuple[str, Type, Any, bool]] = []
+    lists_of_enums: List[Tuple[str, Type, Any, bool]] = []
+    seqs_of_enums: List[Tuple[str, Type, Any, bool]] = []
     enums = []
     inlines = []
     unions: Tuple[str, List[Type], Any] = []
@@ -152,6 +152,30 @@ def _make_fb_functions(cl):
                     optional_bytes.append(field.name)
                 elif has(union_args[0]):
                     optional_tables.append(field.name)
+                elif is_generic_subclass(union_args[0], list):
+                    arg = union_args[0].__args__[0]
+                    if arg is str:
+                        lists_of_strings.append(field.name)
+                    elif has(arg):
+                        lists_of_tables.append((field.name, arg))
+                    elif arg in (int, float, bool):
+                        lists_of_scalars.append(
+                            (
+                                field.name,
+                                arg,
+                                _get_scalar_list_type(cl, field.name)[0],
+                                True,
+                            )
+                        )
+                    elif issubclass(arg, IntEnum):
+                        lists_of_enums.append(
+                            (
+                                field.name,
+                                arg,
+                                _get_scalar_list_type(cl, field.name)[0],
+                                True,
+                            )
+                        )
                 elif issubclass(union_args[0], IntEnum):
                     raise ValueError("Flatbuffers don't support optional enums.")
             else:
@@ -164,11 +188,11 @@ def _make_fb_functions(cl):
                 lists_of_tables.append((field.name, arg))
             elif arg in (int, float, bool):
                 lists_of_scalars.append(
-                    (field.name, arg, _get_scalar_list_type(cl, field.name))
+                    (field.name, arg, _get_scalar_list_type(cl, field.name)[0], False)
                 )
             elif issubclass(arg, IntEnum):
                 lists_of_enums.append(
-                    (field.name, arg, _get_scalar_list_type(cl, field.name))
+                    (field.name, arg, _get_scalar_list_type(cl, field.name)[0], False)
                 )
         elif is_generic_subclass(type, Sequence):
             arg = type.__args__[0]
@@ -178,11 +202,11 @@ def _make_fb_functions(cl):
                 seqs_of_tables.append((field.name, arg))
             elif arg in (int, float, bool):
                 seqs_of_scalars.append(
-                    (field.name, arg, _get_scalar_list_type(cl, field.name))
+                    (field.name, arg, _get_scalar_list_type(cl, field.name)[0], False)
                 )
             elif issubclass(arg, IntEnum):
                 seqs_of_enums.append(
-                    (field.name, arg, _get_scalar_list_type(cl, field.name))
+                    (field.name, arg, _get_scalar_list_type(cl, field.name)[0], False)
                 )
         elif issubclass(type, IntEnum):
             enums.append(field.name)
@@ -457,7 +481,7 @@ def _make_add_to_builder_fn(
             f"    __fb_self_{field}_offset = builder.EndVector(len(__fb_self_{field}))"
         )
 
-    for field, _, fb_number_type in lists_of_scalars:
+    for field, _, fb_number_type, is_optional in lists_of_scalars:
         norm_field_name = f"{field[0].upper()}{field[1:]}"
         prepend = fb_number_type_to_builder_prepend[fb_number_type]
         globs[f"{field}StartVector"] = getattr(
@@ -465,11 +489,15 @@ def _make_add_to_builder_fn(
         )
 
         lines.append(f"    __fb_self_{field} = self.{field}")
-        lines.append(f"    {field}StartVector(builder, len(__fb_self_{field}))")
-        lines.append(f"    for o in reversed(__fb_self_{field}):")
-        lines.append(f"        builder.{prepend}(o)")
+        indent = ""
+        if is_optional:
+            lines.append(f"    if __fb_self_{field} is not None:")
+            indent = "  "
+        lines.append(f"    {indent}{field}StartVector(builder, len(__fb_self_{field}))")
+        lines.append(f"    {indent}for o in reversed(__fb_self_{field}):")
+        lines.append(f"    {indent}    builder.{prepend}(o)")
         lines.append(
-            f"    __fb_self_{field}_offset = builder.EndVector(len(__fb_self_{field}))"
+            f"    {indent}__fb_self_{field}_offset = builder.EndVector(len(__fb_self_{field}))"
         )
 
     lines.append(f"    builder.StartObject({num_slots})")
@@ -524,12 +552,18 @@ def _make_add_to_builder_fn(
         globs[field_starter_name] = field_start
         lines.append(f"    {field_starter_name}(builder, nodes[id(self.{field})])")
 
-    for field, _, _ in lists_of_scalars:
+    for field, _, _, is_optional in lists_of_scalars:
         norm_field_name = f"{field[0].upper()}{field[1:]}"
         field_starter_name = f"{name}Add{norm_field_name}"
         field_start = getattr(mod, field_starter_name)
         globs[field_starter_name] = field_start
-        lines.append(f"    {field_starter_name}(builder, __fb_self_{field}_offset)")
+        if is_optional:
+            prefix = f"if __fb_self_{field} is not None: "
+        else:
+            prefix = ""
+        lines.append(
+            f"    {prefix}{field_starter_name}(builder, __fb_self_{field}_offset)"
+        )
 
     for field in optional_tables:
         norm_field_name = f"{field[0].upper()}{field[1:]}"
@@ -640,7 +674,7 @@ def _make_from_fb_fn(
     lists_of_strings: List[str],
     union_fields: List[Tuple[str, List[Type], Type]],
     inlines: List[str],
-    lists_of_scalars: List[Tuple[str, Type]],
+    lists_of_scalars: List[Tuple[str, Type, Any, bool]],
     lists_of_enums: List[Tuple[str, Type, Any]],
     seqs_of_tables: List[Tuple[str, Type]],
     seqs_of_scalars: List[Tuple[str, Type]],
@@ -658,6 +692,8 @@ def _make_from_fb_fn(
     seqs_of_scalar_names = {t[0]: t[1] for t in seqs_of_scalars}
     lists_of_enum_names = {t[0]: t for t in lists_of_enums}
     seqs_of_enum_names = {t[0]: t for t in seqs_of_enums}
+
+    optionals = {f[0] for f in lists_of_scalars if f[3]}
 
     from_fb = "__fb_from_fb__"
     lines.append("@classmethod")
@@ -762,7 +798,15 @@ def _make_from_fb_fn(
             )
         elif fname in lists_of_scalar_names:
             for_ = f"for i in range(fb_instance.{norm_field_name}Length())"
-            lines.append(f"        [fb_instance.{norm_field_name}(i) {for_}],")
+            line = f"        [fb_instance.{norm_field_name}(i) {for_}]"
+            if fname in optionals:
+                # We need the field offset since the Python bindings hide them.
+                _, offset = _get_scalar_list_type(cl, fname)
+                # We adjust the previous line a little
+                line = (
+                    f"{line} if int(fb_instance._tab.Offset({offset})) != 0 else None"
+                )
+            lines.append(line + ", ")
         elif fname in seqs_of_scalar_names:
             for_ = f"for i in range(fb_instance.{norm_field_name}Length())"
             lines.append(f"        tuple(fb_instance.{norm_field_name}(i) {for_}),")
@@ -827,11 +871,12 @@ def _get_offsets_for_string(fn) -> Tuple[int, int]:
     return d.slot_num, d.default
 
 
-def _get_scalar_list_type(cl, fname: str) -> Any:
-    """Fish out the scalar type for a lists of scalars."""
+def _get_scalar_list_type(cl, fname: str) -> Tuple[Any, int]:
+    """Fish out the scalar type and field offset for a lists of scalars."""
 
     class DummyTab:
-        def Offset(self, x):
+        def Offset(self, offset):
+            self.field_offset = offset
             return 1
 
         def GetVectorAsNumpy(self, number_type, _):
@@ -844,4 +889,4 @@ def _get_scalar_list_type(cl, fname: str) -> Any:
     norm_field_name = f"{fname[0].upper()}{fname[1:]}"
     getattr(inst, f"{norm_field_name}AsNumpy")()
 
-    return tab.scalar_type
+    return tab.scalar_type, tab.field_offset

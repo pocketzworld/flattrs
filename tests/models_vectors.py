@@ -7,8 +7,10 @@ from flattr import Flatbuffer, from_package
 from . import flattrs_test
 from .flattrs_test.ByteArrayTable import ByteArrayTable
 from .flattrs_test.OptionalByteArrayTable import OptionalByteArrayTable
+from .flattrs_test.OptionalVectorsOfScalars import OptionalVectorsOfScalars
 from .flattrs_test.VectorOfCommon1 import VectorOfCommon1
 from .flattrs_test.VectorOfEnums import VectorOfEnums
+from .flattrs_test.VectorOfOptionalCommon1 import VectorOfOptionalCommon1
 from .flattrs_test.VectorsOfScalars import VectorsOfScalars
 from .models_common import Common1
 from .models_enums import ASimpleUByteEnum
@@ -29,6 +31,21 @@ class VectorsOfScalars:
     vecOfFloat64s: List[float] = attr.ib()
 
 
+@Flatbuffer(OptionalVectorsOfScalars)
+class OptionalVectorsOfScalars:
+    vecOfBools: Optional[List[bool]] = attr.ib()
+    vecOfUint8s: Optional[List[int]] = attr.ib()
+    vecOfUint16s: Optional[List[int]] = attr.ib()
+    vecOfUint32s: Optional[List[int]] = attr.ib()
+    vecOfUint64s: Optional[List[int]] = attr.ib()
+    vecOfInt8s: Optional[List[int]] = attr.ib()
+    vecOfInt16s: Optional[List[int]] = attr.ib()
+    vecOfInt32s: Optional[List[int]] = attr.ib()
+    vecOfInt64s: Optional[List[int]] = attr.ib()
+    vecOfFloat32s: Optional[List[float]] = attr.ib()
+    vecOfFloat64s: Optional[List[float]] = attr.ib()
+
+
 @from_package(flattrs_test, frozen=True)
 class SeqVectorsOfScalars:
     vecOfBools: Sequence[bool] = attr.ib()
@@ -47,6 +64,11 @@ class SeqVectorsOfScalars:
 @Flatbuffer(VectorOfCommon1)
 class VectorOfCommon1:
     vecOfCommon: List[Common1] = attr.ib()
+
+
+@Flatbuffer(VectorOfOptionalCommon1)
+class VectorOfOptionalCommon1:
+    vecOfCommon: Optional[List[Common1]] = attr.ib()
 
 
 @from_package(flattrs_test, frozen=True)

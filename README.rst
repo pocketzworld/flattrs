@@ -5,6 +5,10 @@
 Changelog:
 ----------
 
+0.1.10 (2021-01-26)
+~~~~~~~~~~~~~~~~~~~
+* Add support for optional vectors of scalars.
+
 0.1.9 (2020-11-10)
 ~~~~~~~~~~~~~~~~~~
 * Add support for `typing.Sequence[str]` (deserializes to tuples).

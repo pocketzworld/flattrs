@@ -15,6 +15,7 @@ from .models_enums import ASimpleUByteEnum
 from .models_vectors import (
     ByteArrayTable,
     OptionalByteArrayTable,
+    OptionalVectorsOfScalars,
     SeqVectorOfCommon1,
     SeqVectorOfEnums,
     SeqVectorOfStrings,
@@ -52,6 +53,23 @@ def vectors_of_scalars(draw):
         draw(lists(int64s)),
         draw(lists(float32s)),
         draw(lists(float64s)),
+    )
+
+
+@composite
+def optional_vectors_of_scalars(draw):
+    return OptionalVectorsOfScalars(
+        draw(lists(booleans()) | none()),
+        draw(lists(uint8s) | none()),
+        draw(lists(uint16s) | none()),
+        draw(lists(uint32s) | none()),
+        draw(lists(uint64s) | none()),
+        draw(lists(int8s) | none()),
+        draw(lists(int16s) | none()),
+        draw(lists(int32s) | none()),
+        draw(lists(int64s) | none()),
+        draw(lists(float32s) | none()),
+        draw(lists(float64s) | none()),
     )
 
 
@@ -109,6 +127,11 @@ def seq_vectors_of_strings(draw):
 
 @given(vectors_of_scalars())
 def test_vectors_of_scalars_rt(inst):
+    assert inst == model_from_bytes(inst.__class__, model_to_bytes(inst))
+
+
+@given(optional_vectors_of_scalars())
+def test_optional_vectors_of_scalars_rt(inst):
     assert inst == model_from_bytes(inst.__class__, model_to_bytes(inst))
 
 
