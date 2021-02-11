@@ -11,7 +11,7 @@ else:
 
 setup(
     name="flattrs",
-    version="0.1.11",
+    version="0.1.12",
     install_requires=["attrs", "flatbuffers==1.9", "numpy"],
     packages=find_packages(where="src"),
     package_dir={"": "src"},
