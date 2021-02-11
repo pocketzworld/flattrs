@@ -123,10 +123,10 @@ def _make_fb_functions(cl):
     optional_bytes = []
     tables = []
     optional_tables = []
-    lists_of_tables = []
-    seqs_of_tables = []
+    lists_of_tables: List[Tuple[str, Type, bool]] = []
+    seqs_of_tables: List[Tuple[str, Type, bool]] = []
     lists_of_strings = []
-    seqs_of_strings = []
+    seqs_of_strings: List[Tuple[str, bool]] = []
     lists_of_scalars: List[Tuple[str, Type, Any, bool]] = []
     seqs_of_scalars: List[Tuple[str, Type, Any, bool]] = []
     lists_of_enums: List[Tuple[str, Type, Any, bool]] = []
@@ -157,7 +157,7 @@ def _make_fb_functions(cl):
                     if arg is str:
                         lists_of_strings.append(field.name)
                     elif has(arg):
-                        lists_of_tables.append((field.name, arg))
+                        lists_of_tables.append((field.name, arg, True))
                     elif arg in (int, float, bool):
                         lists_of_scalars.append(
                             (
@@ -176,6 +176,30 @@ def _make_fb_functions(cl):
                                 True,
                             )
                         )
+                elif is_generic_subclass(union_args[0], Sequence):
+                    arg = union_args[0].__args__[0]
+                    if arg is str:
+                        seqs_of_strings.append((field.name, True))
+                    elif has(arg):
+                        seqs_of_tables.append((field.name, arg, True))
+                    elif arg in (int, float, bool):
+                        seqs_of_scalars.append(
+                            (
+                                field.name,
+                                arg,
+                                _get_scalar_list_type(cl, field.name)[0],
+                                True,
+                            )
+                        )
+                    elif issubclass(arg, IntEnum):
+                        seqs_of_enums.append(
+                            (
+                                field.name,
+                                arg,
+                                _get_scalar_list_type(cl, field.name)[0],
+                                True,
+                            )
+                        )
                 elif issubclass(union_args[0], IntEnum):
                     raise ValueError("Flatbuffers don't support optional enums.")
             else:
@@ -185,7 +209,7 @@ def _make_fb_functions(cl):
             if arg is str:
                 lists_of_strings.append(field.name)
             elif has(arg):
-                lists_of_tables.append((field.name, arg))
+                lists_of_tables.append((field.name, arg, False))
             elif arg in (int, float, bool):
                 lists_of_scalars.append(
                     (field.name, arg, _get_scalar_list_type(cl, field.name)[0], False)
@@ -199,7 +223,7 @@ def _make_fb_functions(cl):
             if arg is str:
                 seqs_of_strings.append(field.name)
             elif has(arg):
-                seqs_of_tables.append((field.name, arg))
+                seqs_of_tables.append((field.name, arg, False))
             elif arg in (int, float, bool):
                 seqs_of_scalars.append(
                     (field.name, arg, _get_scalar_list_type(cl, field.name)[0], False)
@@ -334,7 +358,7 @@ def _make_nonnestables_fn(
     byte_fields: List[str],
     table_fields: List[str],
     optional_tables: List[str],
-    lists_of_tables: List[Tuple[str, Type]],
+    lists_of_tables: List[Tuple[str, Type, bool]],
     lists_of_strings: List[str],
     unions: List[Tuple[str, List[Type], Type]],
 ) -> Callable[[], Tuple[Set[str], List[bytes], List[FBItem]]]:
@@ -372,18 +396,24 @@ def _make_nonnestables_fn(
         )
         lines.append(f"        fb_items.extend({table_field}_items)")
 
-    for field, _ in lists_of_tables:
+    for field, _, is_optional in lists_of_tables:
         norm_field_name = f"{field[0].upper()}{field[1:]}"
         globs[f"{field}VectorStart"] = getattr(
             mod, f"{cl.__name__}Start{norm_field_name}Vector"
         )
 
         lines.append(f"    {field}_items = self.{field}")
-        lines.append(f"    for item in {field}_items:")
-        lines.append(f"        i_is = item.__fb_nonnestables__()")
-        lines.append(f"        fb_items.extend(i_is)")
-        lines.append(f"    vec_start = {field}VectorStart")
-        lines.append(f"    fb_items.append(({field}_items, FBVector, vec_start))")
+
+        indent = ""
+        if is_optional:
+            lines.append(f"    if {field}_items is not None:")
+            indent = "  "
+
+        lines.append(f"    {indent}for item in {field}_items:")
+        lines.append(f"    {indent}    i_is = item.__fb_nonnestables__()")
+        lines.append(f"    {indent}    fb_items.extend(i_is)")
+        lines.append(f"    {indent}vec_start = {field}VectorStart")
+        lines.append(f"    {indent}fb_items.append(({field}_items, FBVector, vec_start))")
 
     lines.append("    fb_items.append((self, FBTable, None))")
 
@@ -413,7 +443,7 @@ def _make_add_to_builder_fn(
     optional_bytes: List[str],
     table_fields: List[str],
     optional_tables: List[str],
-    lists_of_tables: List[Tuple[str, Type]],
+    lists_of_tables: List[Tuple[str, Type, bool]],
     lists_of_strings: List[str],
     lists_of_scalars: List[Tuple[str, Type]],
     inlines: List[str],
@@ -545,12 +575,24 @@ def _make_add_to_builder_fn(
         globs[field_starter_name] = field_start
         lines.append(f"    {field_starter_name}(builder, __fb_self_{field}_offset)")
 
-    for field in table_fields + [l[0] for l in lists_of_tables] + byte_fields:
+    for field in table_fields + byte_fields:
         norm_field_name = f"{field[0].upper()}{field[1:]}"
         field_starter_name = f"{name}Add{norm_field_name}"
         field_start = getattr(mod, field_starter_name)
         globs[field_starter_name] = field_start
         lines.append(f"    {field_starter_name}(builder, nodes[id(self.{field})])")
+    
+    for field, _, is_optional in lists_of_tables:
+        norm_field_name = f"{field[0].upper()}{field[1:]}"
+        field_starter_name = f"{name}Add{norm_field_name}"
+        field_start = getattr(mod, field_starter_name)
+        lines.append(f"    __fb_self_{field} = self.{field}")
+        globs[field_starter_name] = field_start
+        if is_optional:
+            prefix = f"if __fb_self_{field} is not None: "
+        else:
+            prefix = ""
+        lines.append(f"    {prefix}{field_starter_name}(builder, nodes[id(__fb_self_{field})])")
 
     for field, _, _, is_optional in lists_of_scalars:
         norm_field_name = f"{field[0].upper()}{field[1:]}"
@@ -670,13 +712,13 @@ def _make_from_fb_fn(
     enum_fields: List[str],
     table_fields: List[str],
     optional_tables: List[str],
-    lists_of_tables: List[Tuple[str, Type]],
+    lists_of_tables: List[Tuple[str, Type, bool]],
     lists_of_strings: List[str],
     union_fields: List[Tuple[str, List[Type], Type]],
     inlines: List[str],
     lists_of_scalars: List[Tuple[str, Type, Any, bool]],
     lists_of_enums: List[Tuple[str, Type, Any]],
-    seqs_of_tables: List[Tuple[str, Type]],
+    seqs_of_tables: List[Tuple[str, Type, bool]],
     seqs_of_scalars: List[Tuple[str, Type]],
     seqs_of_enums: List[Tuple[str, Type]],
     seqs_of_strings: List[str],
@@ -685,8 +727,8 @@ def _make_from_fb_fn(
     name = cl.__fb_class__.__name__
     globs = {}
     lines = []
-    table_field_names = {t[0]: t[1] for t in lists_of_tables}
-    seq_table_field_names = {t[0]: t[1] for t in seqs_of_tables}
+    list_table_fields = {t[0]: t for t in lists_of_tables}
+    seq_table_fields = {t[0]: t for t in seqs_of_tables}
     union_field_names = {t[0]: t for t in union_fields}
     lists_of_scalar_names = {t[0]: t[1] for t in lists_of_scalars}
     seqs_of_scalar_names = {t[0]: t[1] for t in seqs_of_scalars}
@@ -734,22 +776,36 @@ def _make_from_fb_fn(
             lines.append(
                 f"        {table_name}.{from_fb}(fb_instance.{norm_field_name}()) if fb_instance.{norm_field_name}() is not None else None,"
             )
-        elif fname in table_field_names:
-            type = table_field_names[fname]
+        elif fname in list_table_fields:
+            _, type, is_optional = list_table_fields[fname]
+            tn = type.__name__
+            globs[tn] = type
+
+            for_ = f"for i in range(fb_instance.{norm_field_name}Length())"
+            line = f"        [{tn}.{from_fb}(fb_instance.{norm_field_name}(i)) {for_}]"
+
+            if is_optional:
+                # We need the field offset since the Python bindings hide them.
+                offset = _get_table_list_offset(cl, fname)
+                # We adjust the previous line a little
+                line = (
+                    f"{line} if int(fb_instance._tab.Offset({offset})) != 0 else None"
+                )
+            lines.append(f"{line},")
+        elif fname in seq_table_fields:
+            _, type, is_optional = seq_table_fields[fname]
             tn = type.__name__
             globs[tn] = type
             for_ = f"for i in range(fb_instance.{norm_field_name}Length())"
-            lines.append(
-                f"        [{tn}.{from_fb}(fb_instance.{norm_field_name}(i)) {for_}],"
-            )
-        elif fname in seq_table_field_names:
-            type = seq_table_field_names[fname]
-            tn = type.__name__
-            globs[tn] = type
-            for_ = f"for i in range(fb_instance.{norm_field_name}Length())"
-            lines.append(
-                f"        tuple({tn}.{from_fb}(fb_instance.{norm_field_name}(i)) {for_}),"
-            )
+            line = f"        tuple({tn}.{from_fb}(fb_instance.{norm_field_name}(i)) {for_})"
+            if is_optional:
+                # We need the field offset since the Python bindings hide them.
+                offset = _get_table_list_offset(cl, fname)
+                # We adjust the previous line a little
+                line = (
+                    f"{line} if int(fb_instance._tab.Offset({offset})) != 0 else None"
+                )
+            lines.append(f"{line},")
         elif fname in lists_of_strings:
             for_ = f"for i in range(fb_instance.{norm_field_name}Length())"
             lines.append(
@@ -890,3 +946,17 @@ def _get_scalar_list_type(cl, fname: str) -> Tuple[Any, int]:
     getattr(inst, f"{norm_field_name}AsNumpy")()
 
     return tab.scalar_type, tab.field_offset
+
+def _get_table_list_offset(cl, fname: str) -> int:
+    class DummyTab:
+        def Offset(self, offset):
+            self.field_offset = offset
+            return 0
+
+    tab = DummyTab()
+    inst = cl.__fb_class__()
+    inst._tab = tab
+    norm_field_name = f"{fname[0].upper()}{fname[1:]}"
+    getattr(inst, f"{norm_field_name}Length")()
+
+    return tab.field_offset

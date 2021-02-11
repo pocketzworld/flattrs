@@ -76,3 +76,7 @@ table SeqVectorOfStrings {
 table VectorOfOptionalCommon1 {
     vecOfCommon: [Common1];
 }
+
+table SeqVectorOfOptionalCommon1 {
+    vecOfCommon: [Common1];
+}

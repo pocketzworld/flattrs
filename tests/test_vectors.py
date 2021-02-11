@@ -18,10 +18,12 @@ from .models_vectors import (
     OptionalVectorsOfScalars,
     SeqVectorOfCommon1,
     SeqVectorOfEnums,
+    SeqVectorOfOptionalCommon1,
     SeqVectorOfStrings,
     SeqVectorsOfScalars,
     VectorOfCommon1,
     VectorOfEnums,
+    VectorOfOptionalCommon1,
     VectorsOfScalars,
 )
 from .strats import (
@@ -94,6 +96,13 @@ def seq_vectors_of_scalars(draw):
 def vectors_of_common1s(draw):
     return VectorOfCommon1(draw(lists(common1s())))
 
+@composite
+def vectors_of_optional_common1s(draw):
+    return VectorOfOptionalCommon1(draw(lists(common1s()) | none()))
+
+@composite
+def seq_vectors_of_optional_common1s(draw):
+    return SeqVectorOfOptionalCommon1(draw(lists(common1s()).map(tuple) | none()))
 
 @composite
 def seq_vectors_of_common1s(draw):
@@ -144,6 +153,13 @@ def test_seq_vectors_of_scalars_rt(inst):
 def test_vectors_of_common1s_rt(inst):
     assert inst == model_from_bytes(inst.__class__, model_to_bytes(inst))
 
+@given(vectors_of_optional_common1s())
+def test_vectors_of_optional_common1s_rt(inst):
+    assert inst == model_from_bytes(inst.__class__, model_to_bytes(inst))
+
+@given(seq_vectors_of_optional_common1s())
+def test_seq_vectors_of_optional_common1s_rt(inst):
+    assert inst == model_from_bytes(inst.__class__, model_to_bytes(inst))
 
 @given(seq_vectors_of_common1s())
 def test_seq_vectors_of_common1s_rt(inst):

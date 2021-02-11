@@ -8,6 +8,7 @@ from . import flattrs_test
 from .flattrs_test.ByteArrayTable import ByteArrayTable
 from .flattrs_test.OptionalByteArrayTable import OptionalByteArrayTable
 from .flattrs_test.OptionalVectorsOfScalars import OptionalVectorsOfScalars
+from .flattrs_test.SeqVectorOfOptionalCommon1 import SeqVectorOfOptionalCommon1
 from .flattrs_test.VectorOfCommon1 import VectorOfCommon1
 from .flattrs_test.VectorOfEnums import VectorOfEnums
 from .flattrs_test.VectorOfOptionalCommon1 import VectorOfOptionalCommon1
@@ -70,6 +71,9 @@ class VectorOfCommon1:
 class VectorOfOptionalCommon1:
     vecOfCommon: Optional[List[Common1]] = attr.ib()
 
+@Flatbuffer(SeqVectorOfOptionalCommon1)
+class SeqVectorOfOptionalCommon1:
+    vecOfCommon: Optional[Sequence[Common1]] = attr.ib()
 
 @from_package(flattrs_test, frozen=True)
 class SeqVectorOfCommon1:
