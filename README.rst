@@ -5,6 +5,10 @@
 Changelog:
 ----------
 
+0.1.11 (2021-02-11)
+~~~~~~~~~~~~~~~~~~~
+* Add support for optional vectors and sequences of tables.
+
 0.1.10 (2021-01-26)
 ~~~~~~~~~~~~~~~~~~~
 * Add support for optional vectors of scalars.
