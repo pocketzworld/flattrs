@@ -5,6 +5,10 @@
 Changelog:
 ----------
 
+0.1.12 (2021-02-11)
+~~~~~~~~~~~~~~~~~~~
+* Fix code generation bug.
+
 0.1.11 (2021-02-11)
 ~~~~~~~~~~~~~~~~~~~
 * Add support for optional vectors and sequences of tables.

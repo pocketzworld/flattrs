@@ -413,7 +413,9 @@ def _make_nonnestables_fn(
         lines.append(f"    {indent}    i_is = item.__fb_nonnestables__()")
         lines.append(f"    {indent}    fb_items.extend(i_is)")
         lines.append(f"    {indent}vec_start = {field}VectorStart")
-        lines.append(f"    {indent}fb_items.append(({field}_items, FBVector, vec_start))")
+        lines.append(
+            f"    {indent}fb_items.append(({field}_items, FBVector, vec_start))"
+        )
 
     lines.append("    fb_items.append((self, FBTable, None))")
 
@@ -581,7 +583,7 @@ def _make_add_to_builder_fn(
         field_start = getattr(mod, field_starter_name)
         globs[field_starter_name] = field_start
         lines.append(f"    {field_starter_name}(builder, nodes[id(self.{field})])")
-    
+
     for field, _, is_optional in lists_of_tables:
         norm_field_name = f"{field[0].upper()}{field[1:]}"
         field_starter_name = f"{name}Add{norm_field_name}"
@@ -592,7 +594,9 @@ def _make_add_to_builder_fn(
             prefix = f"if __fb_self_{field} is not None: "
         else:
             prefix = ""
-        lines.append(f"    {prefix}{field_starter_name}(builder, nodes[id(__fb_self_{field})])")
+        lines.append(
+            f"    {prefix}{field_starter_name}(builder, nodes[id(__fb_self_{field})])"
+        )
 
     for field, _, _, is_optional in lists_of_scalars:
         norm_field_name = f"{field[0].upper()}{field[1:]}"
@@ -662,7 +666,10 @@ def _make_add_to_builder_fn(
     lines.append("")
     sha1 = hashlib.sha1()
     sha1.update(name.encode("utf-8"))
-    unique_filename = "<FB add_to_builder for %s, %s>" % (name, sha1.hexdigest(),)
+    unique_filename = "<FB add_to_builder for %s, %s>" % (
+        name,
+        sha1.hexdigest(),
+    )
     script = "\n".join(lines)
     eval(compile(script, unique_filename, "exec"), globs)
 
@@ -770,9 +777,9 @@ def _make_from_fb_fn(
                 f"        {table_name}.{from_fb}(fb_instance.{norm_field_name}()),"
             )
         elif fname in optional_tables:
-            cl = field.type.__args__[0]
-            table_name = cl.__name__
-            globs[table_name] = cl
+            inner_cl = field.type.__args__[0]
+            table_name = inner_cl.__name__
+            globs[table_name] = inner_cl
             lines.append(
                 f"        {table_name}.{from_fb}(fb_instance.{norm_field_name}()) if fb_instance.{norm_field_name}() is not None else None,"
             )
@@ -946,6 +953,7 @@ def _get_scalar_list_type(cl, fname: str) -> Tuple[Any, int]:
     getattr(inst, f"{norm_field_name}AsNumpy")()
 
     return tab.scalar_type, tab.field_offset
+
 
 def _get_table_list_offset(cl, fname: str) -> int:
     class DummyTab:
