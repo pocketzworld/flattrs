@@ -70,6 +70,14 @@ table SeqVectorOfEnums {
 }
 
 table SeqVectorOfStrings {
+    strings: [string] (required);
+}
+
+table OptionalVectorOfStrings {
+    strings: [string];
+}
+
+table OptionalSeqVectorOfStrings {
     strings: [string];
 }
 

@@ -71,9 +71,11 @@ class VectorOfCommon1:
 class VectorOfOptionalCommon1:
     vecOfCommon: Optional[List[Common1]] = attr.ib()
 
+
 @Flatbuffer(SeqVectorOfOptionalCommon1)
 class SeqVectorOfOptionalCommon1:
     vecOfCommon: Optional[Sequence[Common1]] = attr.ib()
+
 
 @from_package(flattrs_test, frozen=True)
 class SeqVectorOfCommon1:
@@ -103,3 +105,13 @@ class SeqVectorOfEnums:
 @from_package(flattrs_test, frozen=True)
 class SeqVectorOfStrings:
     strings: Sequence[str] = attr.ib()
+
+
+@from_package(flattrs_test)
+class OptionalVectorOfStrings:
+    strings: Optional[List[str]] = attr.ib()
+
+
+@from_package(flattrs_test)
+class OptionalSeqVectorOfStrings:
+    strings: Optional[Sequence[str]] = attr.ib()

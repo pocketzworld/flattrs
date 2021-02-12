@@ -15,6 +15,8 @@ from .models_enums import ASimpleUByteEnum
 from .models_vectors import (
     ByteArrayTable,
     OptionalByteArrayTable,
+    OptionalSeqVectorOfStrings,
+    OptionalVectorOfStrings,
     OptionalVectorsOfScalars,
     SeqVectorOfCommon1,
     SeqVectorOfEnums,
@@ -96,13 +98,16 @@ def seq_vectors_of_scalars(draw):
 def vectors_of_common1s(draw):
     return VectorOfCommon1(draw(lists(common1s())))
 
+
 @composite
 def vectors_of_optional_common1s(draw):
     return VectorOfOptionalCommon1(draw(lists(common1s()) | none()))
 
+
 @composite
 def seq_vectors_of_optional_common1s(draw):
     return SeqVectorOfOptionalCommon1(draw(lists(common1s()).map(tuple) | none()))
+
 
 @composite
 def seq_vectors_of_common1s(draw):
@@ -134,6 +139,16 @@ def seq_vectors_of_strings(draw):
     return SeqVectorOfStrings(tuple(draw(lists(text()))))
 
 
+@composite
+def optional_vectors_of_strings(draw):
+    return OptionalVectorOfStrings(draw(lists(text()) | none()))
+
+
+@composite
+def optional_seq_vectors_of_strings(draw):
+    return OptionalSeqVectorOfStrings(draw(lists(text()).map(tuple) | none()))
+
+
 @given(vectors_of_scalars())
 def test_vectors_of_scalars_rt(inst):
     assert inst == model_from_bytes(inst.__class__, model_to_bytes(inst))
@@ -153,13 +168,16 @@ def test_seq_vectors_of_scalars_rt(inst):
 def test_vectors_of_common1s_rt(inst):
     assert inst == model_from_bytes(inst.__class__, model_to_bytes(inst))
 
+
 @given(vectors_of_optional_common1s())
 def test_vectors_of_optional_common1s_rt(inst):
     assert inst == model_from_bytes(inst.__class__, model_to_bytes(inst))
 
+
 @given(seq_vectors_of_optional_common1s())
 def test_seq_vectors_of_optional_common1s_rt(inst):
     assert inst == model_from_bytes(inst.__class__, model_to_bytes(inst))
+
 
 @given(seq_vectors_of_common1s())
 def test_seq_vectors_of_common1s_rt(inst):
@@ -188,4 +206,14 @@ def test_seq_vectors_of_enums(inst):
 
 @given(seq_vectors_of_strings())
 def test_seq_vectors_of_strings(inst):
+    assert inst == model_from_bytes(inst.__class__, model_to_bytes(inst))
+
+
+@given(optional_vectors_of_strings())
+def test_optional_vectors_of_strings(inst):
+    assert inst == model_from_bytes(inst.__class__, model_to_bytes(inst))
+
+
+@given(optional_seq_vectors_of_strings())
+def test_optional_seq_vectors_of_strings(inst):
     assert inst == model_from_bytes(inst.__class__, model_to_bytes(inst))

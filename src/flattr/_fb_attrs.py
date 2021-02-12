@@ -125,7 +125,7 @@ def _make_fb_functions(cl):
     optional_tables = []
     lists_of_tables: List[Tuple[str, Type, bool]] = []
     seqs_of_tables: List[Tuple[str, Type, bool]] = []
-    lists_of_strings = []
+    lists_of_strings: List[Tuple[str, bool]] = []
     seqs_of_strings: List[Tuple[str, bool]] = []
     lists_of_scalars: List[Tuple[str, Type, Any, bool]] = []
     seqs_of_scalars: List[Tuple[str, Type, Any, bool]] = []
@@ -155,7 +155,7 @@ def _make_fb_functions(cl):
                 elif is_generic_subclass(union_args[0], list):
                     arg = union_args[0].__args__[0]
                     if arg is str:
-                        lists_of_strings.append(field.name)
+                        lists_of_strings.append((field.name, True))
                     elif has(arg):
                         lists_of_tables.append((field.name, arg, True))
                     elif arg in (int, float, bool):
@@ -207,7 +207,7 @@ def _make_fb_functions(cl):
         elif is_generic_subclass(type, list):
             arg = type.__args__[0]
             if arg is str:
-                lists_of_strings.append(field.name)
+                lists_of_strings.append((field.name, False))
             elif has(arg):
                 lists_of_tables.append((field.name, arg, False))
             elif arg in (int, float, bool):
@@ -221,7 +221,7 @@ def _make_fb_functions(cl):
         elif is_generic_subclass(type, Sequence):
             arg = type.__args__[0]
             if arg is str:
-                seqs_of_strings.append(field.name)
+                seqs_of_strings.append((field.name, False))
             elif has(arg):
                 seqs_of_tables.append((field.name, arg, False))
             elif arg in (int, float, bool):
@@ -446,7 +446,7 @@ def _make_add_to_builder_fn(
     table_fields: List[str],
     optional_tables: List[str],
     lists_of_tables: List[Tuple[str, Type, bool]],
-    lists_of_strings: List[str],
+    lists_of_strings: List[Tuple[str, bool]],
     lists_of_scalars: List[Tuple[str, Type]],
     inlines: List[str],
     unions: List[Tuple[str, Type, Type]],
@@ -491,26 +491,31 @@ def _make_add_to_builder_fn(
             f"        nodes[id(__fb_self_{field})] = builder.CreateByteVector(__fb_self_{field})"
         )
 
-    for field in lists_of_strings:
+    for field, is_optional in lists_of_strings:
         norm_field_name = f"{field[0].upper()}{field[1:]}"
         globs[f"{field}StartVector"] = getattr(
             mod, f"{cl.__name__}Start{norm_field_name}Vector"
         )
 
         lines.append(f"    __fb_self_{field} = self.{field}")
-        lines.append(f"    __fb_self_{field}_offsets = []")
-        lines.append(f"    for e in __fb_self_{field}:")
-        lines.append(f"        if e in strs:")
-        lines.append(f"            __fb_self_{field}_offsets.append(strs[e])")
-        lines.append(f"        else:")
-        lines.append(f"            offset = builder.CreateString(e)")
-        lines.append(f"            strs[e] = offset")
-        lines.append(f"            __fb_self_{field}_offsets.append(offset)")
-        lines.append(f"    {field}StartVector(builder, len(__fb_self_{field}))")
-        lines.append(f"    for o in reversed(__fb_self_{field}_offsets):")
-        lines.append(f"        builder.PrependUOffsetTRelative(o)")
+        i = ""
+        if is_optional:
+            i = "    "
+            lines.append(f"    if __fb_self_{field} is not None:")
+
+        lines.append(f"{i}    __fb_self_{field}_offsets = []")
+        lines.append(f"{i}    for e in __fb_self_{field}:")
+        lines.append(f"{i}        if e in strs:")
+        lines.append(f"{i}            __fb_self_{field}_offsets.append(strs[e])")
+        lines.append(f"{i}        else:")
+        lines.append(f"{i}            offset = builder.CreateString(e)")
+        lines.append(f"{i}            strs[e] = offset")
+        lines.append(f"{i}            __fb_self_{field}_offsets.append(offset)")
+        lines.append(f"{i}    {field}StartVector(builder, len(__fb_self_{field}))")
+        lines.append(f"{i}    for o in reversed(__fb_self_{field}_offsets):")
+        lines.append(f"{i}        builder.PrependUOffsetTRelative(o)")
         lines.append(
-            f"    __fb_self_{field}_offset = builder.EndVector(len(__fb_self_{field}))"
+            f"{i}    __fb_self_{field}_offset = builder.EndVector(len(__fb_self_{field}))"
         )
 
     for field, _, fb_number_type, is_optional in lists_of_scalars:
@@ -570,12 +575,17 @@ def _make_add_to_builder_fn(
             f"        builder.PrependUOffsetTRelativeSlot({slot_num}, nodes[id(__fb_self_{field})], {default})"
         )
 
-    for field in lists_of_strings:
+    for field, is_optional in lists_of_strings:
         norm_field_name = f"{field[0].upper()}{field[1:]}"
         field_starter_name = f"{name}Add{norm_field_name}"
         field_start = getattr(mod, field_starter_name)
         globs[field_starter_name] = field_start
-        lines.append(f"    {field_starter_name}(builder, __fb_self_{field}_offset)")
+        prefix = ""
+        if is_optional:
+            prefix = f"if __fb_self_{field} is not None: "
+        lines.append(
+            f"    {prefix}{field_starter_name}(builder, __fb_self_{field}_offset)"
+        )
 
     for field in table_fields + byte_fields:
         norm_field_name = f"{field[0].upper()}{field[1:]}"
@@ -720,7 +730,7 @@ def _make_from_fb_fn(
     table_fields: List[str],
     optional_tables: List[str],
     lists_of_tables: List[Tuple[str, Type, bool]],
-    lists_of_strings: List[str],
+    lists_of_strings: List[Tuple[str, bool]],
     union_fields: List[Tuple[str, List[Type], Type]],
     inlines: List[str],
     lists_of_scalars: List[Tuple[str, Type, Any, bool]],
@@ -728,7 +738,7 @@ def _make_from_fb_fn(
     seqs_of_tables: List[Tuple[str, Type, bool]],
     seqs_of_scalars: List[Tuple[str, Type]],
     seqs_of_enums: List[Tuple[str, Type]],
-    seqs_of_strings: List[str],
+    seqs_of_strings: List[Tuple[str, bool]],
 ) -> Callable:
     """Compile a function to init an attrs model from a FB model."""
     name = cl.__fb_class__.__name__
@@ -741,6 +751,8 @@ def _make_from_fb_fn(
     seqs_of_scalar_names = {t[0]: t[1] for t in seqs_of_scalars}
     lists_of_enum_names = {t[0]: t for t in lists_of_enums}
     seqs_of_enum_names = {t[0]: t for t in seqs_of_enums}
+    lists_of_strings_names = {t[0]: t[1] for t in lists_of_strings}
+    seqs_of_strings_names = {t[0]: t[1] for t in seqs_of_strings}
 
     optionals = {f[0] for f in lists_of_scalars if f[3]}
 
@@ -813,16 +825,30 @@ def _make_from_fb_fn(
                     f"{line} if int(fb_instance._tab.Offset({offset})) != 0 else None"
                 )
             lines.append(f"{line},")
-        elif fname in lists_of_strings:
+        elif fname in lists_of_strings_names:
+            is_optional = lists_of_strings_names[fname]
             for_ = f"for i in range(fb_instance.{norm_field_name}Length())"
-            lines.append(
-                f"        [fb_instance.{norm_field_name}(i).decode('utf8') {for_}],"
-            )
-        elif fname in seqs_of_strings:
+            line = f"        [fb_instance.{norm_field_name}(i).decode('utf8') {for_}]"
+            if is_optional:
+                offset = _get_table_list_offset(cl, fname)
+                # We adjust the previous line a little
+                line = (
+                    f"{line} if int(fb_instance._tab.Offset({offset})) != 0 else None"
+                )
+            lines.append(f"{line},")
+        elif fname in seqs_of_strings_names:
+            is_optional = seqs_of_strings_names[fname]
             for_ = f"for i in range(fb_instance.{norm_field_name}Length())"
-            lines.append(
-                f"        tuple(fb_instance.{norm_field_name}(i).decode('utf8') {for_}),"
+            line = (
+                f"        tuple(fb_instance.{norm_field_name}(i).decode('utf8') {for_})"
             )
+            if is_optional:
+                offset = _get_table_list_offset(cl, fname)
+                # We adjust the previous line a little
+                line = (
+                    f"{line} if int(fb_instance._tab.Offset({offset})) != 0 else None"
+                )
+            lines.append(f"{line},")
         elif fname in inlines:
             type = field.type
             globs[f"_{fname}_type"] = type

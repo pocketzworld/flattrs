@@ -5,6 +5,10 @@
 Changelog:
 ----------
 
+0.1.13 (2021-02-12)
+~~~~~~~~~~~~~~~~~~~
+* Add support for optional vectors and sequences of strings.
+
 0.1.12 (2021-02-11)
 ~~~~~~~~~~~~~~~~~~~
 * Fix code generation bug.
