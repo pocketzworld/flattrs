@@ -4,7 +4,7 @@ from collections.abc import Sequence
 from enum import Enum, IntEnum, unique
 from importlib import import_module
 from sys import modules
-from typing import Any, Callable, Dict, List, Optional, Set, Tuple, Type, Union
+from typing import Any, Callable, Dict, List, Optional, Set, Tuple, Type, TypeVar, Union
 
 import attr
 from attr import fields, has
@@ -30,9 +30,23 @@ except ImportError:
     from flatbuffers.builder import Builder
 
 
+_T = TypeVar("_T")
+
+
+def __dataclass_transform__(
+    *,
+    eq_default: bool = True,
+    order_default: bool = False,
+    kw_only_default: bool = False,
+    field_descriptors: Tuple[Union[type, Callable[..., Any]], ...] = ((attr.attrib, attr.field)),
+) -> Callable[[_T], _T]:
+    return lambda c: c
+
+
 UNION_CL = "__fb_union_cl"
 
 
+@__dataclass_transform__()
 def Flatbuffer(fb_cl, frozen: bool = False, repr: bool = True):
     def wrapper(cl):
         res = attr.s(slots=True, frozen=frozen, repr=repr)(cl)
@@ -63,6 +77,7 @@ def FlatbufferEnum(fb_cl):
     return wrapper
 
 
+@__dataclass_transform__()
 def from_package(pkg, frozen: bool = False, repr: bool = True):
     def wrap_cls(cl):
         cl_name = cl.__name__
