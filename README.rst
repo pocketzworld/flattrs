@@ -5,6 +5,11 @@
 Changelog:
 ----------
 
+0.1.14 (2022-06-21)
+~~~~~~~~~~~~~~~~~~~
+* Add dataclass transform support.
+* Include Python 3.10, remove 3.6, 3.7 and 3.8.
+
 0.1.13 (2021-02-12)
 ~~~~~~~~~~~~~~~~~~~
 * Add support for optional vectors and sequences of strings.

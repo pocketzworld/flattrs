@@ -11,13 +11,13 @@ else:
 
 setup(
     name="flattrs",
-    version="0.1.13",
+    version="0.1.14",
     install_requires=["attrs", "flatbuffers==1.9", "numpy"],
     packages=find_packages(where="src"),
     package_dir={"": "src"},
     ext_modules=ext_modules,
     zip_safe=False,
-    extras_require={"dev": ["pytest", "hypothesis", "cython"]},
+    extras_require={"dev": ["pytest", "hypothesis", "cython", "coverage"]},
     package_data={"": ["*.pxd", "*.pyx", "py.typed"]},
     license="MIT license",
 )
