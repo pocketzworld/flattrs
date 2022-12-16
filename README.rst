@@ -5,6 +5,10 @@
 Changelog:
 ----------
 
+0.1.15 (UNRELEASED)
+~~~~~~~~~~~~~~~~~~~
+* Include Python 3.11.
+
 0.1.14 (2022-06-21)
 ~~~~~~~~~~~~~~~~~~~
 * Add dataclass transform support.
