@@ -11,13 +11,21 @@ else:
 
 setup(
     name="flattrs",
-    version="0.1.15",
-    install_requires=["attrs", "flatbuffers==1.9", "numpy"],
+    version="0.1.16.dev0",
+    install_requires=["attrs", "flatbuffers==23.1.4", "numpy"],
     packages=find_packages(where="src"),
     package_dir={"": "src"},
     ext_modules=ext_modules,
     zip_safe=False,
-    extras_require={"dev": ["pytest", "hypothesis", "cython==0.29.32", "coverage", "tox==4.0.11"]},
+    extras_require={
+        "dev": [
+            "pytest",
+            "hypothesis==6.61.0",
+            "cython==0.29.32",
+            "coverage",
+            "tox==4.0.11",
+        ]
+    },
     package_data={"": ["*.pxd", "*.pyx", "py.typed"]},
     license="MIT license",
 )

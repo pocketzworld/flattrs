@@ -22,7 +22,7 @@ from flatbuffers.number_types import (
     Uint64Flags,
 )
 
-from ._compat import is_py36, is_py39plus
+from ._compat import is_py39plus
 
 try:
     from .cflattr.builder import Builder
@@ -38,7 +38,9 @@ def __dataclass_transform__(
     eq_default: bool = True,
     order_default: bool = False,
     kw_only_default: bool = False,
-    field_descriptors: Tuple[Union[type, Callable[..., Any]], ...] = ((attr.attrib, attr.field)),
+    field_descriptors: Tuple[Union[type, Callable[..., Any]], ...] = (
+        (attr.attrib, attr.field)
+    ),
 ) -> Callable[[_T], _T]:
     return lambda c: c
 
@@ -103,18 +105,11 @@ FlatbufferEnum.from_package = from_package_enum
 
 
 none_type = type(None)
-if is_py36:
-
-    def is_generic_subclass(t, s):
-        return issubclass(t, s)
-
-
-elif not is_py39plus:
+if not is_py39plus:
     from typing import _GenericAlias
 
     def is_generic_subclass(t, s):
         return isinstance(t, _GenericAlias) and t.__origin__ is s
-
 
 else:
     from types import GenericAlias
@@ -326,7 +321,7 @@ def model_to_bytes(inst, builder: Optional[Builder] = None) -> bytes:
             fb_vec_start(builder, len(fb_item))
             for item in reversed(fb_item):
                 builder.PrependUOffsetTRelative(node_offsets[id(item)])
-            offset = builder.EndVector(len(fb_item))
+            offset = builder.EndVector()
             node_offsets[id(fb_item)] = offset
         else:
             item_id = id(fb_item)
@@ -335,7 +330,6 @@ def model_to_bytes(inst, builder: Optional[Builder] = None) -> bytes:
                     builder, string_offsets, node_offsets
                 )
                 node_offsets[item_id] = offset
-
     builder.Finish(offset)  # Last offset.
     return bytes(builder.Output())
 
@@ -529,9 +523,7 @@ def _make_add_to_builder_fn(
         lines.append(f"{i}    {field}StartVector(builder, len(__fb_self_{field}))")
         lines.append(f"{i}    for o in reversed(__fb_self_{field}_offsets):")
         lines.append(f"{i}        builder.PrependUOffsetTRelative(o)")
-        lines.append(
-            f"{i}    __fb_self_{field}_offset = builder.EndVector(len(__fb_self_{field}))"
-        )
+        lines.append(f"{i}    __fb_self_{field}_offset = builder.EndVector()")
 
     for field, _, fb_number_type, is_optional in lists_of_scalars:
         norm_field_name = f"{field[0].upper()}{field[1:]}"
@@ -548,9 +540,7 @@ def _make_add_to_builder_fn(
         lines.append(f"    {indent}{field}StartVector(builder, len(__fb_self_{field}))")
         lines.append(f"    {indent}for o in reversed(__fb_self_{field}):")
         lines.append(f"    {indent}    builder.{prepend}(o)")
-        lines.append(
-            f"    {indent}__fb_self_{field}_offset = builder.EndVector(len(__fb_self_{field}))"
-        )
+        lines.append(f"    {indent}__fb_self_{field}_offset = builder.EndVector()")
 
     lines.append(f"    builder.StartObject({num_slots})")
 

@@ -222,12 +222,7 @@ cdef class Builder(object):
     cdef StoredVtable* vtables
     cdef bint nested
     cdef bint finished
-
-    """Maximum buffer size constant, in bytes.
-
-    Builder will never allow it's buffer grow over this size.
-    Currently equals 2Gb.
-    """
+    cdef Py_ssize_t vectorNumElems
 
     def __init__(self, Py_ssize_t initialSize):
         """Initializes a Builder of size `initial_size`.
@@ -251,6 +246,7 @@ cdef class Builder(object):
         self.nested = False
         self.finished = False
         self.vtables = NULL
+        self.vectorNumElems = 0
 
     def __dealloc__(self):
         PyMem_Free(self.buffer)
@@ -299,7 +295,6 @@ cdef class Builder(object):
             memset(self.current_vtable, 0, sizeof(Py_ssize_t) * numfields)
         self.current_vtable_length = numfields
         self.objectEnd = self.Offset()
-        self.minalign = 1
         self.nested = True
 
     cdef Py_ssize_t WriteVtable(self):
@@ -437,6 +432,7 @@ cdef class Builder(object):
         if newSize == 0:
             newSize = 1
         buffer_2 = <unsigned char *>PyMem_Malloc(sizeof(unsigned char) * newSize)
+        memset(buffer_2, 0, sizeof(unsigned char) * newSize)
         memcpy(&buffer_2[newSize-self.buffer_length], self.buffer, self.buffer_length)
         self.buffer_length = newSize
         PyMem_Free(self.buffer)
@@ -516,11 +512,12 @@ cdef class Builder(object):
 
         self.assertNotNested()
         self.nested = True
+        self.vectorNumElems = numElems
         self.Prep(Fb_uint32_t.bytewidth, elemSize*numElems)
         self.Prep(alignment, elemSize*numElems)  # In case alignment > int.
         return self.Offset()
 
-    cpdef Py_ssize_t EndVector(self, Py_ssize_t vectorNumElems):
+    cpdef Py_ssize_t EndVector(self):
         """EndVector writes data necessary to finish vector construction."""
 
         self.assertNested()
@@ -528,7 +525,7 @@ cdef class Builder(object):
         self.nested = False
         ## @endcond
         # we already made space for this, so write without PrependUint32
-        self.PlaceUOffsetT(vectorNumElems)
+        self.PlaceUOffsetT(self.vectorNumElems)
         return self.Offset()
 
     cpdef Py_ssize_t CreateString(self, str s, encoding='utf-8', errors='strict'):
@@ -552,8 +549,9 @@ cdef class Builder(object):
         cdef char* c_string = x
 
         memcpy(<void*>&self.buffer[self.head], c_string, l)
+        self.vectorNumElems = l
 
-        return self.EndVector(l)
+        return self.EndVector()
 
     cpdef Py_ssize_t CreateByteVector(self, bytes x):
         """CreateString writes a byte vector."""
@@ -569,8 +567,9 @@ cdef class Builder(object):
         cdef char* c_string = x
 
         memcpy(<void*>&self.buffer[self.head], c_string, l)
+        self.vectorNumElems = l
 
-        return self.EndVector(l)
+        return self.EndVector()
 
     cdef void assertNested(self) except *:
         """

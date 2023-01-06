@@ -1,9 +1,8 @@
 from enum import IntEnum
 
+import flattrs_test
 from flattr import FlatbufferEnum, from_package_enum
-
-from . import flattrs_test
-from .flattrs_test.ASimpleUByteEnum import ASimpleUByteEnum
+from flattrs_test.ASimpleUByteEnum import ASimpleUByteEnum
 
 
 @FlatbufferEnum(ASimpleUByteEnum)

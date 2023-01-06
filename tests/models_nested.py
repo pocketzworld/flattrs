@@ -1,8 +1,7 @@
 import attr
 
 from flattr import Flatbuffer
-
-from tests.flattrs_test.nested.NestedJustAString import NestedJustAString
+from flattrs_test.nested.NestedJustAString import NestedJustAString
 
 
 @Flatbuffer(NestedJustAString)

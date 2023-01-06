@@ -3,6 +3,22 @@ include "enums.fbs";
 
 namespace flattrs_test;
 
+table VectorsOfBools {
+    vec_of_bools: [bool]  (required);
+}
+
+table VectorsOfInts {
+    vecOfInt8s: [int8]  (required);
+    vecOfInt16s: [int16]  (required);
+    vecOfInt32s: [int32]  (required);
+    vecOfInt64s: [int64]  (required);
+}
+
+table VectorsOfFloats {
+    vecOfFloat32s: [float32]  (required);
+    vecOfFloat64s: [float64]  (required);
+}
+
 table VectorsOfScalars {
     vecOfBools: [bool]  (required);
     vecOfUint8s: [uint8]  (required);

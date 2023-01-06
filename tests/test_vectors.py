@@ -1,5 +1,6 @@
 from hypothesis import given
 from hypothesis.strategies import (
+    DrawFn,
     binary,
     booleans,
     composite,
@@ -26,6 +27,7 @@ from .models_vectors import (
     VectorOfCommon1,
     VectorOfEnums,
     VectorOfOptionalCommon1,
+    VectorsOfBools,
     VectorsOfScalars,
 )
 from .strats import (
@@ -42,6 +44,12 @@ from .strats import (
 )
 from .test_common import common1s
 
+
+@composite
+def vectors_of_bools(draw: DrawFn):
+    return VectorsOfBools(
+        draw(lists(booleans())),
+    )
 
 @composite
 def vectors_of_scalars(draw):

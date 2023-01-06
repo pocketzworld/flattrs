@@ -4,8 +4,11 @@
 
 Changelog:
 ----------
+0.1.16 (UNRELEASED)
+~~~~~~~~~~~~~~~~~~~
+* Update the underlying `flatbuffers` dependency.
 
-0.1.15 (UNRELEASED)
+0.1.15 (2022-12-16)
 ~~~~~~~~~~~~~~~~~~~
 * Include Python 3.11.
 
