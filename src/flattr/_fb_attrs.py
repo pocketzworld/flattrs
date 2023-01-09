@@ -410,7 +410,7 @@ def _make_nonnestables_fn(
         lines.append(f"        fb_items.extend({table_field}_items)")
 
     for field, _, is_optional in lists_of_tables:
-        norm_field_name = f"{field[0].upper()}{field[1:]}"
+        norm_field_name = _normalize_fn(field)
         globs[f"{field}VectorStart"] = getattr(
             mod, f"{cl.__name__}Start{norm_field_name}Vector"
         )
@@ -505,7 +505,7 @@ def _make_add_to_builder_fn(
         )
 
     for field, is_optional in lists_of_strings:
-        norm_field_name = f"{field[0].upper()}{field[1:]}"
+        norm_field_name = _normalize_fn(field)
         globs[f"{field}StartVector"] = getattr(
             mod, f"{cl.__name__}Start{norm_field_name}Vector"
         )
@@ -530,7 +530,7 @@ def _make_add_to_builder_fn(
         lines.append(f"{i}    __fb_self_{field}_offset = builder.EndVector()")
 
     for field, _, fb_number_type, is_optional in lists_of_scalars:
-        norm_field_name = f"{field[0].upper()}{field[1:]}"
+        norm_field_name = _normalize_fn(field)
         prepend = fb_number_type_to_builder_prepend[fb_number_type]
         globs[f"{field}StartVector"] = getattr(
             mod, f"{cl.__name__}Start{norm_field_name}Vector"
