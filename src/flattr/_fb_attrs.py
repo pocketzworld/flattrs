@@ -3,8 +3,22 @@ import linecache
 from collections.abc import Sequence
 from enum import Enum, IntEnum, unique
 from importlib import import_module
+from re import sub
 from sys import modules
-from typing import Any, Callable, Dict, List, Optional, Set, Tuple, Type, TypeVar, Union
+from types import GenericAlias
+from typing import (
+    Any,
+    Callable,
+    Dict,
+    List,
+    Optional,
+    Set,
+    Tuple,
+    Type,
+    TypeVar,
+    Union,
+    _GenericAlias,
+)
 
 import attr
 from attr import fields, has
@@ -21,8 +35,6 @@ from flatbuffers.number_types import (
     Uint32Flags,
     Uint64Flags,
 )
-
-from ._compat import is_py39plus
 
 try:
     from .cflattr.builder import Builder
@@ -105,20 +117,12 @@ FlatbufferEnum.from_package = from_package_enum
 
 
 none_type = type(None)
-if not is_py39plus:
-    from typing import _GenericAlias
 
-    def is_generic_subclass(t, s):
-        return isinstance(t, _GenericAlias) and t.__origin__ is s
 
-else:
-    from types import GenericAlias
-    from typing import _GenericAlias
-
-    def is_generic_subclass(t, s):
-        return (isinstance(t, _GenericAlias) and t.__origin__ is s) or (
-            isinstance(t, GenericAlias) and t.__origin__ is s
-        )
+def is_generic_subclass(t, s):
+    return (isinstance(t, _GenericAlias) and t.__origin__ is s) or (
+        isinstance(t, GenericAlias) and t.__origin__ is s
+    )
 
 
 def _make_fb_functions(cl):
@@ -545,7 +549,7 @@ def _make_add_to_builder_fn(
     lines.append(f"    builder.StartObject({num_slots})")
 
     for field in string_fields:
-        norm_field_name = f"{field[0].upper()}{field[1:]}"
+        norm_field_name = _normalize_fn(field)
         field_starter_name = f"{name}Add{norm_field_name}"
         field_start = getattr(mod, field_starter_name)
         slot_num, default = _get_offsets_for_string(field_start)
@@ -765,12 +769,12 @@ def _make_from_fb_fn(
     lines.append("@classmethod")
     lines.append("def __fb_from_fb__(cls, fb_instance):")
     for fname in optional_bytes:
-        norm_field_name = f"{fname[0].upper()}{fname[1:]}"
+        norm_field_name = _normalize_fn(fname)
         lines.append(f"    __fb_{fname} = fb_instance.{norm_field_name}AsNumpy()")
     lines.append("    return cls(")
     for field in fields(cl):
         fname = field.name
-        norm_field_name = f"{fname[0].upper()}{fname[1:]}"
+        norm_field_name = _normalize_fn(fname)
         if fname in string_fields:
             lines.append(f"        fb_instance.{norm_field_name}().decode('utf8'),")
         elif fname in optional_strings:
@@ -980,7 +984,7 @@ def _get_scalar_list_type(cl, fname: str) -> Tuple[Any, int]:
     tab = DummyTab()
     inst = cl.__fb_class__()
     inst._tab = tab
-    norm_field_name = f"{fname[0].upper()}{fname[1:]}"
+    norm_field_name = _normalize_fn(fname)
     getattr(inst, f"{norm_field_name}AsNumpy")()
 
     return tab.scalar_type, tab.field_offset
@@ -995,7 +999,19 @@ def _get_table_list_offset(cl, fname: str) -> int:
     tab = DummyTab()
     inst = cl.__fb_class__()
     inst._tab = tab
-    norm_field_name = f"{fname[0].upper()}{fname[1:]}"
+    norm_field_name = _normalize_fn(fname)
     getattr(inst, f"{norm_field_name}Length")()
 
     return tab.field_offset
+
+
+def _normalize_fn(fname: str) -> str:
+    """The name needs to be capitalized.
+
+    If there are two or more consecutive capitals:
+    * the cluster is title-cased (isNPC -> isNpc)
+    """
+    res = sub("[A-Z]+", lambda m: m.group(0).title(), fname)
+    # Title-casing needs to happen after the caps processing.
+    res = f"{fname[0].upper()}{res[1:]}"
+    return res
