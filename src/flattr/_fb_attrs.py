@@ -558,7 +558,7 @@ def _make_add_to_builder_fn(
         )
 
     for field in optional_strings:
-        norm_field_name = f"{field[0].upper()}{field[1:]}"
+        norm_field_name = _normalize_fn(field)
         field_starter_name = f"{name}Add{norm_field_name}"
         field_start = getattr(mod, field_starter_name)
         globs[field_starter_name] = field_start
@@ -566,7 +566,7 @@ def _make_add_to_builder_fn(
         lines.append(f"        {field_starter_name}(builder, strs[__fb_self_{field}])")
 
     for field in byte_fields:
-        norm_field_name = f"{field[0].upper()}{field[1:]}"
+        norm_field_name = _normalize_fn(field)
         field_starter_name = f"{name}Add{norm_field_name}"
         field_start = getattr(mod, field_starter_name)
         slot_num, default = _get_offsets_for_string(field_start)
@@ -575,7 +575,7 @@ def _make_add_to_builder_fn(
         )
 
     for field in optional_bytes:
-        norm_field_name = f"{field[0].upper()}{field[1:]}"
+        norm_field_name = _normalize_fn(field)
         field_starter_name = f"{name}Add{norm_field_name}"
         field_start = getattr(mod, field_starter_name)
         slot_num, default = _get_offsets_for_string(field_start)
@@ -585,7 +585,7 @@ def _make_add_to_builder_fn(
         )
 
     for field, is_optional in lists_of_strings:
-        norm_field_name = f"{field[0].upper()}{field[1:]}"
+        norm_field_name = _normalize_fn(field)
         field_starter_name = f"{name}Add{norm_field_name}"
         field_start = getattr(mod, field_starter_name)
         globs[field_starter_name] = field_start
@@ -597,14 +597,14 @@ def _make_add_to_builder_fn(
         )
 
     for field in table_fields + byte_fields:
-        norm_field_name = f"{field[0].upper()}{field[1:]}"
+        norm_field_name = _normalize_fn(field)
         field_starter_name = f"{name}Add{norm_field_name}"
         field_start = getattr(mod, field_starter_name)
         globs[field_starter_name] = field_start
         lines.append(f"    {field_starter_name}(builder, nodes[id(self.{field})])")
 
     for field, _, is_optional in lists_of_tables:
-        norm_field_name = f"{field[0].upper()}{field[1:]}"
+        norm_field_name = _normalize_fn(field)
         field_starter_name = f"{name}Add{norm_field_name}"
         field_start = getattr(mod, field_starter_name)
         lines.append(f"    __fb_self_{field} = self.{field}")
@@ -618,7 +618,7 @@ def _make_add_to_builder_fn(
         )
 
     for field, _, _, is_optional in lists_of_scalars:
-        norm_field_name = f"{field[0].upper()}{field[1:]}"
+        norm_field_name = _normalize_fn(field)
         field_starter_name = f"{name}Add{norm_field_name}"
         field_start = getattr(mod, field_starter_name)
         globs[field_starter_name] = field_start
@@ -631,7 +631,7 @@ def _make_add_to_builder_fn(
         )
 
     for field in optional_tables:
-        norm_field_name = f"{field[0].upper()}{field[1:]}"
+        norm_field_name = _normalize_fn(field)
         field_starter_name = f"{name}Add{norm_field_name}"
         field_start = getattr(mod, field_starter_name)
         globs[field_starter_name] = field_start
@@ -639,14 +639,14 @@ def _make_add_to_builder_fn(
         lines.append(f"        {field_starter_name}(builder, nodes[id(self.{field})])")
 
     for field in inlines:
-        norm_field_name = f"{field[0].upper()}{field[1:]}"
+        norm_field_name = _normalize_fn(field)
         field_starter_name = f"{name}Add{norm_field_name}"
         field_start = getattr(mod, field_starter_name)
         globs[field_starter_name] = field_start
         lines.append(f"    {field_starter_name}(builder, self.{field})")
 
     for field, union_types, fb_enum in unions:
-        norm_field_name = f"{field[0].upper()}{field[1:]}"
+        norm_field_name = _normalize_fn(field)
         type_adder_name = f"{name}Add{norm_field_name}Type"
         type_adder = getattr(mod, type_adder_name)
         field_starter_name = f"{name}Add{norm_field_name}"
