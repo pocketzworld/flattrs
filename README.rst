@@ -7,6 +7,7 @@ Changelog:
 0.1.16 (UNRELEASED)
 ~~~~~~~~~~~~~~~~~~~
 * Update the underlying `flatbuffers` dependency.
+* Switch to using `attrs.define` under the hood, allowing the use of next-gen _attrs_ APIs.
 
 0.1.15 (2022-12-16)
 ~~~~~~~~~~~~~~~~~~~

@@ -21,7 +21,7 @@ from typing import (
 )
 
 import attr
-from attr import fields, has
+from attr import define, fields, has
 from flatbuffers.number_types import (
     BoolFlags,
     Float32Flags,
@@ -63,7 +63,7 @@ UNION_CL = "__fb_union_cl"
 @__dataclass_transform__()
 def Flatbuffer(fb_cl, frozen: bool = False, repr: bool = True):
     def wrapper(cl):
-        res = attr.s(slots=True, frozen=frozen, repr=repr)(cl)
+        res = define(slots=True, frozen=frozen, repr=repr)(cl)
         res.__fb_module__ = modules[fb_cl.__module__]
         res.__fb_class__ = fb_cl
         _make_fb_functions(res)
