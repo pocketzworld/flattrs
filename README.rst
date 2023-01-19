@@ -1,10 +1,10 @@
-.. image:: https://travis-ci.org/Tinche/flattrs.svg?branch=master
+.. image:: https://travis-ci.org/Tinche/flattrs.svg?branch=main
    :target: https://travis-ci.org/Tinche/flattrs
    :alt: CI Status
 
 Changelog:
 ----------
-0.1.16 (UNRELEASED)
+0.1.16 (2023-01-19)
 ~~~~~~~~~~~~~~~~~~~
 * Update the underlying `flatbuffers` dependency.
 * Switch to using `attrs.define` under the hood, allowing the use of next-gen _attrs_ APIs.
