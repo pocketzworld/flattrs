@@ -18,8 +18,10 @@ from flattr import model_from_bytes, model_to_bytes
 from ..flatc import models_vectors as models_vectors_flatc
 from ..flatc.test_vectors import (
     bytearray_tables,
+    optional_bytearray_tables,
     optional_vectors_of_scalars,
     vectors_of_common1s,
+    vectors_of_enums,
     vectors_of_optional_common1s,
     vectors_of_scalars,
 )
@@ -195,7 +197,7 @@ def test_vectors_of_opt_common1(
 
 
 @given(
-    bytearray_tables().map(
+    bytearray_tables.map(
         lambda v: (
             v,
             structure(unstructure(v), models_vectors_flattrs.ByteArrayTable),
@@ -206,6 +208,62 @@ def test_bytearray_tables(
     insts: tuple[
         models_vectors_flatc.ByteArrayTable,
         models_vectors_flattrs.ByteArrayTable,
+    ]
+):
+    flatc, flattrs = insts
+    flatc_bytes = model_to_bytes(flatc)
+    flattrs_bytes = model_to_bytes(flattrs)
+    assert flatc_bytes == flattrs_bytes
+
+    assert asdict(model_from_bytes(flatc.__class__, flatc_bytes)) == asdict(
+        model_from_bytes(flattrs.__class__, flatc_bytes)
+    )
+
+    assert repr(model_from_bytes(flatc.__class__, flatc_bytes)) == repr(
+        model_from_bytes(flattrs.__class__, flatc_bytes)
+    )
+
+
+@given(
+    optional_bytearray_tables.map(
+        lambda v: (
+            v,
+            structure(unstructure(v), models_vectors_flattrs.OptionalByteArrayTable),
+        )
+    )
+)
+def test_opt_bytearray_tables(
+    insts: tuple[
+        models_vectors_flatc.OptionalByteArrayTable,
+        models_vectors_flattrs.OptionalByteArrayTable,
+    ]
+):
+    flatc, flattrs = insts
+    flatc_bytes = model_to_bytes(flatc)
+    flattrs_bytes = model_to_bytes(flattrs)
+    assert flatc_bytes == flattrs_bytes
+
+    assert asdict(model_from_bytes(flatc.__class__, flatc_bytes)) == asdict(
+        model_from_bytes(flattrs.__class__, flatc_bytes)
+    )
+
+    assert repr(model_from_bytes(flatc.__class__, flatc_bytes)) == repr(
+        model_from_bytes(flattrs.__class__, flatc_bytes)
+    )
+
+
+@given(
+    vectors_of_enums.map(
+        lambda v: (
+            v,
+            structure(unstructure(v), models_vectors_flattrs.VectorOfEnums),
+        )
+    )
+)
+def test_opt_bytearray_tables(
+    insts: tuple[
+        models_vectors_flatc.VectorOfEnums,
+        models_vectors_flattrs.VectorOfEnums,
     ]
 ):
     flatc, flattrs = insts

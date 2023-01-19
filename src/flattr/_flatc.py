@@ -1,11 +1,11 @@
 """Functionality for the `flatc` backend."""
 import hashlib
 import linecache
-from enum import IntEnum, ReprEnum
+from enum import Enum, ReprEnum
 from re import sub
 from typing import Any, Callable, Final, List, Tuple, Type
 
-from attrs import NOTHING, fields
+from attrs import fields
 from flatbuffers.number_types import (
     BoolFlags,
     Float32Flags,
@@ -20,7 +20,15 @@ from flatbuffers.number_types import (
     Uint64Flags,
 )
 
-from ._types import FieldName, MaybeDefault, Optionality, ScalarType, SlotNumber
+from ._consts import HELPER_TYPE_TO_SCALAR_TYPE
+from ._types import (
+    FieldName,
+    MaybeDefault,
+    Optionality,
+    PythonScalarType,
+    ScalarType,
+    SlotNumber,
+)
 from .typing import get_list_args, is_subclass
 
 none_type = type(None)
@@ -66,7 +74,9 @@ def make_from_fb_fn(
     union_fields: List[Tuple[str, List[Type], Type]],
     inlines: list[tuple[str, str, int]],
     lists_of_scalars: List[Tuple[str, Type, Any, bool]],
-    lists_of_enums: List[Tuple[str, Type, Any]],
+    lists_of_enums: list[
+        tuple[FieldName, SlotNumber, PythonScalarType, ScalarType, Optionality]
+    ],
     seqs_of_tables: List[Tuple[str, Type, bool]],
     seqs_of_scalars: List[Tuple[str, Type]],
     seqs_of_enums: List[Tuple[str, Type]],
@@ -228,7 +238,7 @@ def make_from_fb_fn(
             for_ = f"for i in range(fb_instance.{norm_field_name}Length())"
             lines.append(f"        tuple(fb_instance.{norm_field_name}(i) {for_}),")
         elif fname in lists_of_enum_names:
-            enum_type = lists_of_enum_names[fname][1]
+            enum_type = lists_of_enum_names[fname][2]
             dn = f"_{fname}_enum"
             globs[dn] = enum_type
             for_ = f"for i in range(fb_instance.{norm_field_name}Length())"
@@ -279,11 +289,27 @@ def _normalize_fn(fname: str) -> str:
 
 
 def get_scalar_list_types(cl) -> list[tuple[FieldName, ScalarType]]:
+    """For numbers and enums."""
     res = []
     for field in fields(cl):
-        if (args := get_list_args(field.type)) and args[0] in (bool, int, float):
-            st = _get_scalar_list_type(cl, field.name)
-            res.append((field.name, FLAGS_TO_SCALAR_TYPE[st[0]]))
+        if args := get_list_args(field.type):
+            arg = args[0]
+            if arg in (bool, int, float):
+                st = _get_scalar_list_type(cl, field.name)
+                res.append((field.name, FLAGS_TO_SCALAR_TYPE[st[0]]))
+            elif issubclass(arg, Enum) and issubclass(arg, int):
+                for helper_type, scalar_type in HELPER_TYPE_TO_SCALAR_TYPE.items():
+                    if helper_type in arg.__mro__:
+                        break
+                else:
+                    raise TypeError(f"Cannot handle enum {arg}")
+                st = _get_scalar_list_type(cl, field.name)
+                res.append(
+                    (
+                        field.name,
+                        FLAGS_TO_SCALAR_TYPE[st[0]],
+                    )
+                )
     return res
 
 

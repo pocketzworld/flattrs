@@ -46,7 +46,9 @@ def make_from_fb_fn(
     lists_of_scalars: list[
         tuple[FieldName, SlotNumber, PythonScalarType, ScalarType, Optionality]
     ],
-    lists_of_enums: list[tuple[str, type, Any]],
+    lists_of_enums: list[
+        tuple[FieldName, SlotNumber, PythonScalarType, ScalarType, Optionality]
+    ],
     seqs_of_tables: list[tuple[str, type, bool]],
     seqs_of_scalars: list[tuple[str, type]],
     seqs_of_enums: list[tuple[str, type]],
@@ -63,9 +65,8 @@ def make_from_fb_fn(
     list_table_fields = {t[0]: t for t in lists_of_tables}
     seq_table_fields = {t[0]: t for t in seqs_of_tables}
     union_field_names = {t[0]: t for t in union_fields}
-    lists_of_scalar_names = {t[0]: t for t in lists_of_scalars}
+    lists_of_scalar_names = {t[0]: t for t in lists_of_scalars + lists_of_enums}
     seqs_of_scalar_names = {t[0]: t[1] for t in seqs_of_scalars}
-    lists_of_enum_names = {t[0]: t for t in lists_of_enums}
     seqs_of_enum_names = {t[0]: t for t in seqs_of_enums}
     lists_of_strings_names = {t[0]: t[1] for t in lists_of_strings}
     seqs_of_strings_names = {t[0]: t[1] for t in seqs_of_strings}
@@ -238,12 +239,6 @@ def make_from_fb_fn(
         elif fname in seqs_of_scalar_names:
             for_ = f"for i in range(fb_instance.{norm_field_name}Length())"
             lines.append(f"        tuple(fb_instance.{norm_field_name}(i) {for_}),")
-        elif fname in lists_of_enum_names:
-            enum_type = lists_of_enum_names[fname][1]
-            dn = f"_{fname}_enum"
-            globs[dn] = enum_type
-            for_ = f"for i in range(fb_instance.{norm_field_name}Length())"
-            lines.append(f"        [{dn}(fb_instance.{norm_field_name}(i)) {for_}],")
         elif fname in seqs_of_enum_names:
             enum_type = seqs_of_enum_names[fname][1]
             dn = f"_{fname}_enum"

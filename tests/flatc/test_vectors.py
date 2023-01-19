@@ -25,10 +25,13 @@ from ..strats import (
     uint32s,
     uint64s,
 )
+from .models_enums import ASimpleUByteEnum
 from .models_vectors import (
     ByteArrayTable,
+    OptionalByteArrayTable,
     OptionalVectorsOfScalars,
     VectorOfCommon1,
+    VectorOfEnums,
     VectorOfOptionalCommon1,
     VectorsOfBools,
     VectorsOfInts,
@@ -118,20 +121,14 @@ def vectors_of_optional_common1s(draw):
 bytearray_tables = binary().map(ByteArrayTable)
 
 
-# @composite
-# def vectors_of_enums(draw):
-#     return VectorOfEnums(draw(lists(sampled_from(ASimpleUByteEnum))))
-
+vectors_of_enums = lists(sampled_from(ASimpleUByteEnum)).map(VectorOfEnums)
 
 # @composite
 # def seq_vectors_of_enums(draw):
 #     return SeqVectorOfEnums(tuple(draw(lists(sampled_from(ASimpleUByteEnum)))))
 
 
-# @composite
-# def optional_bytearray_tables(draw):
-#     return OptionalByteArrayTable(draw(binary() | none()))
-
+optional_bytearray_tables = (binary() | none()).map(OptionalByteArrayTable)
 
 # @composite
 # def seq_vectors_of_strings(draw):
@@ -202,14 +199,14 @@ def test_bytearray_tables(inst: ByteArrayTable) -> None:
     assert inst == model_from_bytes(inst.__class__, model_to_bytes(inst))
 
 
-# @given(optional_bytearray_tables())
-# def test_optional_bytearray_tables(inst):
-#     assert inst == model_from_bytes(inst.__class__, model_to_bytes(inst))
+@given(optional_bytearray_tables)
+def test_optional_bytearray_tables(inst: OptionalByteArrayTable) -> None:
+    assert inst == model_from_bytes(inst.__class__, model_to_bytes(inst))
 
 
-# @given(vectors_of_enums())
-# def test_vectors_of_enums(inst):
-#     assert inst == model_from_bytes(inst.__class__, model_to_bytes(inst))
+@given(vectors_of_enums)
+def test_vectors_of_enums(inst: VectorOfEnums) -> None:
+    assert inst == model_from_bytes(inst.__class__, model_to_bytes(inst))
 
 
 # @given(seq_vectors_of_enums())

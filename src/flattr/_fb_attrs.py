@@ -10,10 +10,9 @@ from typing import Any, Callable, Final, List, Optional, Set, Type, TypeVar, Uni
 import attr
 from attrs import NOTHING, define, fields, has
 
-from ._consts import SCALAR_TYPE_TO_DEFAULT
+from ._consts import HELPER_TYPE_TO_SCALAR_TYPE, SCALAR_TYPE_TO_DEFAULT
 from ._flatc import (
     _get_num_slots_from_flatc_module,
-    _get_scalar_list_type,
     _normalize_fn,
     get_scalar_list_types,
     get_scalar_types,
@@ -193,7 +192,9 @@ def _make_fb_functions(
     seqs_of_scalars: List[
         tuple[FieldName, SlotNumber, PythonScalarType, Any, bool]
     ] = []
-    lists_of_enums: List[tuple[str, Type, Any, bool]] = []
+    lists_of_enums: list[
+        tuple[FieldName, SlotNumber, PythonScalarType, ScalarType, Optionality]
+    ] = []
     seqs_of_enums: List[tuple[str, Type, Any, bool]] = []
     enums: list[FieldName, str, SlotNumber, MaybeDefault] = []
     inlines: list[FieldName, ScalarType, SlotNumber, MaybeDefault] = []
@@ -326,10 +327,22 @@ def _make_fb_functions(
                     )
                 )
                 next_slot_idx += 1
-            elif issubclass(arg, IntEnum):
+            elif issubclass(arg, Enum) and issubclass(arg, int):
+                for helper_type, scalar_type in HELPER_TYPE_TO_SCALAR_TYPE.items():
+                    if helper_type in arg.__mro__:
+                        break
+                else:
+                    raise TypeError(f"Cannot handle enum {arg}")
                 lists_of_enums.append(
-                    (field.name, arg, _get_scalar_list_type(cl, field.name)[0], False)
+                    (
+                        field.name,
+                        next_slot_idx,
+                        arg,
+                        overridden_sl.get(field.name, scalar_type),
+                        False,
+                    )
                 )
+                next_slot_idx += 1
         elif is_generic_subclass(ftype, Sequence):
             arg = ftype.__args__[0]
             if arg is str:
@@ -772,19 +785,6 @@ def _guess_num_slots(cl) -> int:
     )
 
 
-HELPER_TYPE_TO_SCALAR_TYPE: Final[dict[type, ScalarType]] = {
-    Uint8: "Uint8",
-    Uint16: "Uint16",
-    Uint32: "Uint32",
-    Uint64: "Uint64",
-    Int8: "Int8",
-    Int16: "Int16",
-    Int32: "Int32",
-    bool: "Bool",
-    Float: "Float32",
-    Float64: "Float64",
-    Int64: "Int64",
-}
 SCALAR_TYPE_TO_PREPEND: Final[dict[ScalarType, str]] = {
     "Bool": "PrependBool",
     "Uint8": "PrependUint8",
