@@ -2,8 +2,7 @@ from hypothesis import given
 
 from flattr import model_to_bytes
 
-from ..test_common import all_scalars, all_scalars_with_defaults
-
+from ..flatc.test_common import all_scalars, all_scalars_with_defaults
 from . import builders
 
 

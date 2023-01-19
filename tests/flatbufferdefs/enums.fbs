@@ -2,10 +2,63 @@ namespace flattrs_test;
 
 enum ASimpleUByteEnum: ubyte {
     ONE,
-    TWO,
+    TWO = 255,
 }
 
 enum ASimpleByteEnum: byte {
-    ONE,
-    TWO,
+    THREE,
+    FOUR = -127,
+}
+
+enum AnUInt8Enum: uint8 {
+    FIVE = 254,
+    SIX,
+}
+
+enum AnInt8Enum: int8 {
+    SEVEN = -127,
+    EIGHT,
+}
+
+enum AnUInt16Enum: uint16 {
+    NINE,
+    TEN = 65000,
+}
+
+enum AnInt16Enum: int16 {
+    ELEVEN = -30000,
+    TWELVE,
+}
+
+enum AnUInt32Enum: uint32 {
+    THIRTEEN,
+    FOURTEEN = 4000000000,
+}
+
+enum AnInt32Enum: int32 {
+    FIFTEEN,
+    SIXTEEN,
+}
+
+enum AnUInt64Enum: uint64 {
+    SEVENTEEN = 40000000000,
+    EIGHTEEN,
+}
+
+enum AnInt64Enum: int64 {
+    NINETEEN = -40000000001,
+    TWENTY,
+}
+
+table AllEnums {
+    simple_ubyte: ASimpleUByteEnum;
+    simple_byte: ASimpleByteEnum;
+    uint8enum: AnUInt8Enum = FIVE;
+    int8enum: AnInt8Enum = SEVEN;
+    uint16enum: AnUInt16Enum = NINE;
+    int16enum: AnInt16Enum = ELEVEN;
+    uint32enum: AnUInt32Enum = FOURTEEN;
+    int32enum: AnInt32Enum = SIXTEEN;
+    uint64enum: AnUInt64Enum = SEVENTEEN;
+    int64enum: AnInt64Enum = NINETEEN;
 }

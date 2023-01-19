@@ -30,10 +30,6 @@ table JustAnEnum {
     value: flattrs_test.ASimpleByteEnum;
 }
 
-table ListOfStrings {
-    content: [string] (required);
-}
-
 table HasCaps {
     fieldCAPS: string (required);
     fieldCAPSInMiddle: string (required);

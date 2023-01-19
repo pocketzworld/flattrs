@@ -3,44 +3,56 @@ import linecache
 from collections.abc import Sequence
 from enum import Enum, IntEnum, unique
 from importlib import import_module
-from re import sub
 from sys import modules
-from types import GenericAlias
-from typing import (
-    Any,
-    Callable,
-    Dict,
-    List,
-    Optional,
-    Set,
-    Tuple,
-    Type,
-    TypeVar,
-    Union,
-    _GenericAlias,
-)
+from types import UnionType
+from typing import Any, Callable, Final, List, Optional, Set, Type, TypeVar, Union
 
 import attr
-from attr import define, fields, has
-from flatbuffers.number_types import (
-    BoolFlags,
-    Float32Flags,
-    Float64Flags,
-    Int8Flags,
-    Int16Flags,
-    Int32Flags,
-    Int64Flags,
-    Uint8Flags,
-    Uint16Flags,
-    Uint32Flags,
-    Uint64Flags,
+from attrs import NOTHING, define, fields, has
+
+from ._consts import SCALAR_TYPE_TO_DEFAULT
+from ._flatc import (
+    _get_num_slots_from_flatc_module,
+    _get_scalar_list_type,
+    _normalize_fn,
+    get_scalar_list_types,
+    get_scalar_types,
+)
+from ._flatc import make_from_bytes_fn as flatc_make_from_bytes_fn
+from ._flatc import make_from_fb_fn as flatc_make_from_fb_fn
+from ._flattrs import make_from_bytes_flattrs_fn
+from ._flattrs import make_from_fb_fn as flattrs_make_from_fb_fn
+from ._types import (
+    FieldName,
+    MaybeDefault,
+    Optionality,
+    PythonScalarType,
+    ScalarType,
+    SlotNumber,
+)
+from .types import (
+    Float,
+    Float64,
+    Int8,
+    Int16,
+    Int32,
+    Int64,
+    Uint8,
+    Uint16,
+    Uint32,
+    Uint64,
+)
+from .typing import (
+    get_optional_arg,
+    get_union_args,
+    is_annotated_with,
+    is_generic_subclass,
 )
 
 try:
     from .cflattr.builder import Builder
 except ImportError:
     from flatbuffers.builder import Builder
-
 
 _T = TypeVar("_T")
 
@@ -50,7 +62,7 @@ def __dataclass_transform__(
     eq_default: bool = True,
     order_default: bool = False,
     kw_only_default: bool = False,
-    field_descriptors: Tuple[Union[type, Callable[..., Any]], ...] = (
+    field_descriptors: tuple[Union[type, Callable[..., Any]], ...] = (
         (attr.attrib, attr.field)
     ),
 ) -> Callable[[_T], _T]:
@@ -61,12 +73,43 @@ UNION_CL = "__fb_union_cl"
 
 
 @__dataclass_transform__()
+def flattrs(cl=None, *, frozen: bool = False, repr: bool | None = None):
+    if cl is not None:
+        # Direct application
+        return flattrs(frozen=frozen, repr=repr)(cl)
+
+    def wrapper(cl):
+        res = define(slots=True, frozen=frozen, repr=repr)(cl)
+        num_slots = _guess_num_slots(res)
+        _make_fb_functions(
+            res,
+            num_slots=num_slots,
+            make_from_bytes_fn=make_from_bytes_flattrs_fn,
+            make_from_fb_fn=flattrs_make_from_fb_fn,
+        )
+
+        return res
+
+    return wrapper
+
+
+@__dataclass_transform__()
 def Flatbuffer(fb_cl, frozen: bool = False, repr: bool = True):
     def wrapper(cl):
         res = define(slots=True, frozen=frozen, repr=repr)(cl)
         res.__fb_module__ = modules[fb_cl.__module__]
         res.__fb_class__ = fb_cl
-        _make_fb_functions(res)
+        num_slots = _get_num_slots_from_flatc_module(res.__fb_module__)
+        scalars = get_scalar_types(res, res.__fb_module__)
+        scalar_list_overrides = get_scalar_list_types(res)
+        _make_fb_functions(
+            res,
+            num_slots=num_slots,
+            make_from_bytes_fn=flatc_make_from_bytes_fn,
+            make_from_fb_fn=flatc_make_from_fb_fn,
+            field_overrides=scalars,
+            scalar_list_overrides=scalar_list_overrides,
+        )
 
         return res
 
@@ -83,7 +126,10 @@ def FlatbufferEnum(fb_cl):
             raise ValueError(f"Names don't match: {cl.__name__}/{fb_cl.__name__}.")
 
         for member in cl:
-            if not hasattr(fb_cl, member.name):
+            if (
+                not hasattr(fb_cl, member.name)
+                or getattr(fb_cl, member.name) != member.value
+            ):
                 raise ValueError(f"{cl}/{member.name} doesn't match {fb_cl}.")
 
         return res
@@ -119,150 +165,231 @@ FlatbufferEnum.from_package = from_package_enum
 none_type = type(None)
 
 
-def is_generic_subclass(t, s):
-    return (isinstance(t, _GenericAlias) and t.__origin__ is s) or (
-        isinstance(t, GenericAlias) and t.__origin__ is s
-    )
-
-
-def _make_fb_functions(cl):
+def _make_fb_functions(
+    cl,
+    num_slots: int,
+    make_from_bytes_fn: Callable[[Any], Callable],
+    make_from_fb_fn: Callable,
+    field_overrides: list[tuple[FieldName, ScalarType, MaybeDefault]] = [],
+    scalar_list_overrides: list[tuple[FieldName, ScalarType]] = [],
+) -> None:
     """Inspect the given class for any non-nestable buffers.
 
     Non-nestables are other tables, strings and lists of non-nestables.
     """
     fn_name = "__fb_nonnestables__"
-    strings = []
+    strings: list[tuple[FieldName, SlotNumber]] = []
     optional_strings = []
     byte_fields = []
     optional_bytes = []
-    tables = []
-    optional_tables = []
-    lists_of_tables: List[Tuple[str, Type, bool]] = []
-    seqs_of_tables: List[Tuple[str, Type, bool]] = []
-    lists_of_strings: List[Tuple[str, bool]] = []
-    seqs_of_strings: List[Tuple[str, bool]] = []
-    lists_of_scalars: List[Tuple[str, Type, Any, bool]] = []
-    seqs_of_scalars: List[Tuple[str, Type, Any, bool]] = []
-    lists_of_enums: List[Tuple[str, Type, Any, bool]] = []
-    seqs_of_enums: List[Tuple[str, Type, Any, bool]] = []
-    enums = []
-    inlines = []
-    unions: Tuple[str, List[Type], Any] = []
+    tables: list[tuple[FieldName, type, SlotNumber, Optionality]] = []
+    lists_of_tables: list[tuple[FieldName, type, SlotNumber, Optionality]] = []
+    seqs_of_tables: List[tuple[str, Type, bool]] = []
+    lists_of_strings: List[tuple[str, bool]] = []
+    seqs_of_strings: List[tuple[str, bool]] = []
+    lists_of_scalars: list[
+        tuple[FieldName, SlotNumber, PythonScalarType, ScalarType, Optionality]
+    ] = []
+    seqs_of_scalars: List[
+        tuple[FieldName, SlotNumber, PythonScalarType, Any, bool]
+    ] = []
+    lists_of_enums: List[tuple[str, Type, Any, bool]] = []
+    seqs_of_enums: List[tuple[str, Type, Any, bool]] = []
+    enums: list[FieldName, str, SlotNumber, MaybeDefault] = []
+    inlines: list[FieldName, ScalarType, SlotNumber, MaybeDefault] = []
+    unions: tuple[FieldName, List[Type], Any, SlotNumber] = []
+    next_slot_idx = 0
+
+    overridden = {f[0]: f for f in field_overrides}
+    overridden_sl: dict[FieldName, ScalarType] = {
+        f[0]: f[1] for f in scalar_list_overrides
+    }
+
     for field in fields(cl):
-        type = field.type
-        if type is str:
-            strings.append(field.name)
-        elif type in (bytes, bytearray):
-            byte_fields.append(field.name)
-        elif has(type):
-            tables.append(field.name)
-        elif getattr(type, "__origin__", None) is Union:
-            union_args = type.__args__
-            if len(union_args) == 2 and none_type in union_args:
-                # This is an optional field.
-                if union_args[0] is str:
-                    optional_strings.append(field.name)
-                elif union_args[0] is bytes:
-                    optional_bytes.append(field.name)
-                elif has(union_args[0]):
-                    optional_tables.append(field.name)
-                elif is_generic_subclass(union_args[0], list):
-                    arg = union_args[0].__args__[0]
-                    if arg is str:
-                        lists_of_strings.append((field.name, True))
-                    elif has(arg):
-                        lists_of_tables.append((field.name, arg, True))
-                    elif arg in (int, float, bool):
-                        lists_of_scalars.append(
-                            (
-                                field.name,
-                                arg,
-                                _get_scalar_list_type(cl, field.name)[0],
-                                True,
-                            )
-                        )
-                    elif issubclass(arg, IntEnum):
-                        lists_of_enums.append(
-                            (
-                                field.name,
-                                arg,
-                                _get_scalar_list_type(cl, field.name)[0],
-                                True,
-                            )
-                        )
-                elif is_generic_subclass(union_args[0], Sequence):
-                    arg = union_args[0].__args__[0]
-                    if arg is str:
-                        seqs_of_strings.append((field.name, True))
-                    elif has(arg):
-                        seqs_of_tables.append((field.name, arg, True))
-                    elif arg in (int, float, bool):
-                        seqs_of_scalars.append(
-                            (
-                                field.name,
-                                arg,
-                                _get_scalar_list_type(cl, field.name)[0],
-                                True,
-                            )
-                        )
-                    elif issubclass(arg, IntEnum):
-                        seqs_of_enums.append(
-                            (
-                                field.name,
-                                arg,
-                                _get_scalar_list_type(cl, field.name)[0],
-                                True,
-                            )
-                        )
-                elif issubclass(union_args[0], IntEnum):
-                    raise ValueError("Flatbuffers don't support optional enums.")
+        if field.name in overridden:
+            f = overridden[field.name]
+            if issubclass(field.type, IntEnum):
+                enums.append((field.name, f[1], next_slot_idx, f[2]))
             else:
-                unions.append((field.name, type.__args__, field.metadata[UNION_CL]))
-        elif is_generic_subclass(type, list):
-            arg = type.__args__[0]
+                inlines.append((field.name, f[1], next_slot_idx, f[2]))
+            next_slot_idx += 1
+            continue
+
+        ftype = field.type
+        if ftype is str:
+            strings.append((field.name, next_slot_idx))
+            next_slot_idx += 1
+        elif ftype in (bytes, bytearray):
+            byte_fields.append((field.name, next_slot_idx))
+            next_slot_idx += 1
+        elif has(ftype):
+            tables.append((field.name, field.type, next_slot_idx, False))
+            next_slot_idx += 1
+        elif o := get_optional_arg(ftype):
+            # This is an optional field.
+            if o is str:
+                optional_strings.append((field.name, next_slot_idx))
+                next_slot_idx += 1
+            elif o is bytes:
+                optional_bytes.append((field.name, next_slot_idx))
+                next_slot_idx += 1
+            elif has(o):
+                tables.append((field.name, o, next_slot_idx, True))
+                next_slot_idx += 1
+            elif is_generic_subclass(o, list):
+                arg = o.__args__[0]
+                if arg is str:
+                    lists_of_strings.append((field.name, True))
+                elif has(arg):
+                    lists_of_tables.append((field.name, arg, next_slot_idx, True))
+                    next_slot_idx += 1
+                elif arg in (
+                    bool,
+                    Uint8,
+                    Uint16,
+                    Uint32,
+                    Uint64,
+                    Int8,
+                    Int16,
+                    Int32,
+                    int,
+                    Float,
+                    Float64,
+                ):
+                    lists_of_scalars.append(
+                        (
+                            field.name,
+                            next_slot_idx,
+                            arg,
+                            overridden_sl.get(
+                                field.name, HELPER_TYPE_TO_SCALAR_TYPE[arg]
+                            ),
+                            True,
+                        )
+                    )
+                    next_slot_idx += 1
+                elif issubclass(arg, IntEnum):
+                    lists_of_enums.append(
+                        (
+                            field.name,
+                            arg,
+                            _get_scalar_list_type(cl, field.name)[0],
+                            True,
+                        )
+                    )
+            elif is_generic_subclass(o, Sequence):
+                arg = o.__args__[0]
+                if arg is str:
+                    seqs_of_strings.append((field.name, True))
+                elif has(arg):
+                    seqs_of_tables.append((field.name, arg, True))
+                elif arg in (int, float, bool):
+                    seqs_of_scalars.append(
+                        (
+                            field.name,
+                            next_slot_idx,
+                            arg,
+                            _get_scalar_list_type(cl, field.name)[0],
+                            True,
+                        )
+                    )
+                    next_slot_idx += 1
+                elif issubclass(arg, IntEnum):
+                    seqs_of_enums.append(
+                        (
+                            field.name,
+                            arg,
+                            _get_scalar_list_type(cl, field.name)[0],
+                            True,
+                        )
+                    )
+            elif issubclass(o, IntEnum):
+                raise ValueError("Flatbuffers don't support optional enums.")
+        elif u := get_union_args(ftype):
+            unions.append((field.name, u, field.metadata[UNION_CL], next_slot_idx))
+            next_slot_idx += 2
+        elif is_generic_subclass(ftype, list):
+            arg = ftype.__args__[0]
             if arg is str:
                 lists_of_strings.append((field.name, False))
             elif has(arg):
-                lists_of_tables.append((field.name, arg, False))
-            elif arg in (int, float, bool):
+                lists_of_tables.append((field.name, arg, next_slot_idx, False))
+                next_slot_idx += 1
+            elif arg in HELPER_TYPE_TO_SCALAR_TYPE:
                 lists_of_scalars.append(
-                    (field.name, arg, _get_scalar_list_type(cl, field.name)[0], False)
+                    (
+                        field.name,
+                        next_slot_idx,
+                        arg,
+                        overridden_sl.get(field.name, HELPER_TYPE_TO_SCALAR_TYPE[arg]),
+                        False,
+                    )
                 )
+                next_slot_idx += 1
             elif issubclass(arg, IntEnum):
                 lists_of_enums.append(
                     (field.name, arg, _get_scalar_list_type(cl, field.name)[0], False)
                 )
-        elif is_generic_subclass(type, Sequence):
-            arg = type.__args__[0]
+        elif is_generic_subclass(ftype, Sequence):
+            arg = ftype.__args__[0]
             if arg is str:
                 seqs_of_strings.append((field.name, False))
             elif has(arg):
                 seqs_of_tables.append((field.name, arg, False))
             elif arg in (int, float, bool):
                 seqs_of_scalars.append(
-                    (field.name, arg, _get_scalar_list_type(cl, field.name)[0], False)
+                    (
+                        field.name,
+                        next_slot_idx,
+                        arg,
+                        "Uint8",
+                        False,
+                    )
                 )
+                next_slot_idx += 1
             elif issubclass(arg, IntEnum):
                 seqs_of_enums.append(
                     (field.name, arg, _get_scalar_list_type(cl, field.name)[0], False)
                 )
-        elif issubclass(type, IntEnum):
-            enums.append(field.name)
+        elif is_annotated_with(ftype, Float):
+            inlines.append((field.name, "Float32", next_slot_idx, field.default))
+            next_slot_idx += 1
+        elif issubclass(ftype, Enum) and issubclass(
+            ftype, int
+        ):  # Enums before scalars, since IntEnum is a subclass of int.
+            for helper_type, scalar_type in HELPER_TYPE_TO_SCALAR_TYPE.items():
+                if helper_type in ftype.__mro__:
+                    break
+            else:
+                raise TypeError(f"Cannot handle enum {ftype}")
+            enums.append(
+                (
+                    field.name,
+                    scalar_type,
+                    next_slot_idx,
+                    field.default if field.default is not NOTHING else list(ftype)[0],
+                )
+            )
+            next_slot_idx += 1
+        elif issubclass(ftype, (bool, Float, Float64, Uint8, Uint64, Int32, Int64)):
+            inlines.append(
+                (
+                    field.name,
+                    HELPER_TYPE_TO_SCALAR_TYPE[ftype],
+                    next_slot_idx,
+                    field.default,
+                )
+            )
+            next_slot_idx += 1
         else:
-            inlines.append(field.name)
+            raise Exception(f"Cannot handle {ftype}")
 
     setattr(
         cl,
         fn_name,
         _make_nonnestables_fn(
             cl,
-            strings,
-            optional_strings,
-            byte_fields,
             tables,
-            optional_tables,
-            lists_of_tables + seqs_of_tables,
-            lists_of_strings + seqs_of_strings,
             unions,
         ),
     )
@@ -272,12 +399,12 @@ def _make_fb_functions(cl):
         "__fb_add_to_builder__",
         _make_add_to_builder_fn(
             cl,
+            num_slots,
             strings,
             optional_strings,
             byte_fields,
             optional_bytes,
             tables,
-            optional_tables,
             lists_of_tables + seqs_of_tables,
             lists_of_strings + seqs_of_strings,
             lists_of_scalars + lists_of_enums + seqs_of_scalars + seqs_of_enums,
@@ -286,19 +413,18 @@ def _make_fb_functions(cl):
         ),
     )
 
-    setattr(cl, "__fb_from_bytes__", _make_from_bytes_fn(cl))
+    setattr(cl, "__fb_from_bytes__", make_from_bytes_fn(cl))
     setattr(
         cl,
         "__fb_from_fb__",
-        _make_from_fb_fn(
+        make_from_fb_fn(
             cl,
-            strings,
-            optional_strings,
-            byte_fields,
-            optional_bytes,
+            [s[0] for s in strings],
+            [s[0] for s in optional_strings],
+            [s[0] for s in byte_fields],
+            [s[0] for s in optional_bytes],
             enums,
             tables,
-            optional_tables,
             lists_of_tables,
             lists_of_strings,
             unions,
@@ -338,7 +464,8 @@ def model_to_bytes(inst, builder: Optional[Builder] = None) -> bytes:
     return bytes(builder.Output())
 
 
-def model_from_bytes(cl, payload):
+def model_from_bytes(cl: type[_T], payload: bytes) -> _T:
+    """Deserialize an instance of `cl` from the given payload."""
     return cl.__fb_from_bytes__(payload)
 
 
@@ -347,49 +474,32 @@ class FBItemType(str, Enum):
     VECTOR = "vector"
 
 
-FBItem = Tuple[Any, FBItemType, Callable]
-
-fb_number_type_to_builder_prepend = {
-    BoolFlags: "PrependBool",
-    Uint8Flags: "PrependUint8",
-    Uint16Flags: "PrependUint16",
-    Uint32Flags: "PrependUint32",
-    Uint64Flags: "PrependUint64",
-    Int8Flags: "PrependInt8",
-    Int16Flags: "PrependInt16",
-    Int32Flags: "PrependInt32",
-    Int64Flags: "PrependInt64",
-    Float32Flags: "PrependFloat32",
-    Float64Flags: "PrependFloat64",
-}
+FBItem = tuple[Any, FBItemType, Callable]
 
 
 def _make_nonnestables_fn(
     cl,
-    string_fields: List[str],
-    optional_strings: List[str],
-    byte_fields: List[str],
-    table_fields: List[str],
-    optional_tables: List[str],
-    lists_of_tables: List[Tuple[str, Type, bool]],
-    lists_of_strings: List[str],
-    unions: List[Tuple[str, List[Type], Type]],
-) -> Callable[[], Tuple[Set[str], List[bytes], List[FBItem]]]:
-    name = cl.__fb_class__.__name__
-    mod = cl.__fb_module__
+    table_fields: list[FieldName, type, SlotNumber, Optionality],
+    unions: list[tuple[FieldName, tuple[type, ...], type, SlotNumber]],
+) -> Callable[[], tuple[Set[str], List[bytes], List[FBItem]]]:
+    name = cl.__name__
     globs = {"FBTable": FBItemType.TABLE, "FBVector": FBItemType.VECTOR}
     lines = []
     lines.append("def __fb_nonnestables__(self):")
 
     lines.append("    fb_items = []")
 
-    for table_field in table_fields:
+    for table_field, _, _, is_optional in table_fields:
+        indent = ""
+        if is_optional:
+            lines.append(f"    if self.{table_field} is not None:")
+            indent = "    "
         lines.append(
-            f"    {table_field}_items = self.{table_field}.__fb_nonnestables__()"
+            f"    {indent}{table_field}_items = self.{table_field}.__fb_nonnestables__()"
         )
-        lines.append(f"    fb_items.extend({table_field}_items)")
+        lines.append(f"    {indent}fb_items.extend({table_field}_items)")
 
-    for table_field, union_classes, _ in unions:
+    for table_field, union_classes, _, _ in unions:
         if none_type not in union_classes:
             lines.append(
                 f"    {table_field}_items = self.{table_field}.__fb_nonnestables__()"
@@ -401,34 +511,6 @@ def _make_nonnestables_fn(
                 f"        {table_field}_items = self.{table_field}.__fb_nonnestables__()"
             )
             lines.append(f"        fb_items.extend({table_field}_items)")
-
-    for table_field in optional_tables:
-        lines.append(f"    if self.{table_field} is not None:")
-        lines.append(
-            f"        {table_field}_items = self.{table_field}.__fb_nonnestables__()"
-        )
-        lines.append(f"        fb_items.extend({table_field}_items)")
-
-    for field, _, is_optional in lists_of_tables:
-        norm_field_name = _normalize_fn(field)
-        globs[f"{field}VectorStart"] = getattr(
-            mod, f"{cl.__name__}Start{norm_field_name}Vector"
-        )
-
-        lines.append(f"    {field}_items = self.{field}")
-
-        indent = ""
-        if is_optional:
-            lines.append(f"    if {field}_items is not None:")
-            indent = "  "
-
-        lines.append(f"    {indent}for item in {field}_items:")
-        lines.append(f"    {indent}    i_is = item.__fb_nonnestables__()")
-        lines.append(f"    {indent}    fb_items.extend(i_is)")
-        lines.append(f"    {indent}vec_start = {field}VectorStart")
-        lines.append(
-            f"    {indent}fb_items.append(({field}_items, FBVector, vec_start))"
-        )
 
     lines.append("    fb_items.append((self, FBTable, None))")
 
@@ -452,34 +534,33 @@ def _make_nonnestables_fn(
 
 def _make_add_to_builder_fn(
     cl,
-    string_fields: List[str],
-    optional_strings: List[str],
-    byte_fields: List[str],
-    optional_bytes: List[str],
-    table_fields: List[str],
-    optional_tables: List[str],
-    lists_of_tables: List[Tuple[str, Type, bool]],
-    lists_of_strings: List[Tuple[str, bool]],
-    lists_of_scalars: List[Tuple[str, Type]],
-    inlines: List[str],
-    unions: List[Tuple[str, Type, Type]],
+    num_slots: int,
+    string_fields: list[tuple[str, SlotNumber]],
+    optional_strings: list[tuple[str, SlotNumber]],
+    byte_fields: list[tuple[FieldName, SlotNumber]],
+    optional_bytes: list[tuple[FieldName, SlotNumber]],
+    table_fields: list[tuple[FieldName, type, SlotNumber, Optionality]],
+    lists_of_tables: list[tuple[FieldName, type, SlotNumber, Optionality]],
+    lists_of_strings: list[tuple[FieldName, Optionality]],
+    lists_of_scalars: list[
+        tuple[FieldName, SlotNumber, PythonScalarType, ScalarType, Optionality]
+    ],
+    scalars: list[tuple[FieldName, ScalarType, SlotNumber, MaybeDefault]],
+    unions: list[tuple[FieldName, tuple[type, ...], Type, SlotNumber]],
 ):
-    name = cl.__fb_class__.__name__
-    mod = cl.__fb_module__
-    start = getattr(mod, f"{name}Start")
-    num_slots = _get_num_slots(start)
+    name = cl.__name__
     globs = {}
     lines = []
     lines.append("def __fb_add_to_builder__(self, builder, strs, nodes):")
 
-    for field in string_fields:
+    for field, slot_idx in string_fields:
         lines.append(f"    __fb_self_{field} = self.{field}")
         lines.append(f"    if __fb_self_{field} not in strs:")
         lines.append(
             f"        strs[__fb_self_{field}] = builder.CreateString(__fb_self_{field})"
         )
 
-    for field in optional_strings:
+    for field, slot_idx in optional_strings:
         lines.append(f"    __fb_self_{field} = self.{field}")
         lines.append(
             f"    if __fb_self_{field} is not None and __fb_self_{field} not in strs:"
@@ -488,14 +569,14 @@ def _make_add_to_builder_fn(
             f"        strs[__fb_self_{field}] = builder.CreateString(__fb_self_{field})"
         )
 
-    for field in byte_fields:
+    for field, slot_idx in byte_fields:
         lines.append(f"    __fb_self_{field} = self.{field}")
         lines.append(f"    if id(__fb_self_{field}) not in nodes:")
         lines.append(
             f"        nodes[id(__fb_self_{field})] = builder.CreateByteVector(__fb_self_{field})"
         )
 
-    for field in optional_bytes:
+    for field, slot_idx in optional_bytes:
         lines.append(f"    __fb_self_{field} = self.{field}")
         lines.append(
             f"    if __fb_self_{field} is not None and id(__fb_self_{field}) not in nodes:"
@@ -505,6 +586,7 @@ def _make_add_to_builder_fn(
         )
 
     for field, is_optional in lists_of_strings:
+        mod = cl.__fb_module__
         norm_field_name = _normalize_fn(field)
         globs[f"{field}StartVector"] = getattr(
             mod, f"{cl.__name__}Start{norm_field_name}Vector"
@@ -529,59 +611,58 @@ def _make_add_to_builder_fn(
         lines.append(f"{i}        builder.PrependUOffsetTRelative(o)")
         lines.append(f"{i}    __fb_self_{field}_offset = builder.EndVector()")
 
-    for field, _, fb_number_type, is_optional in lists_of_scalars:
-        norm_field_name = _normalize_fn(field)
-        prepend = fb_number_type_to_builder_prepend[fb_number_type]
-        globs[f"{field}StartVector"] = getattr(
-            mod, f"{cl.__name__}Start{norm_field_name}Vector"
-        )
+    for field, _, _, fb_number_type, is_optional in lists_of_scalars:
+        prepend = SCALAR_TYPE_TO_PREPEND[fb_number_type]
 
         lines.append(f"    __fb_self_{field} = self.{field}")
         indent = ""
         if is_optional:
             lines.append(f"    if __fb_self_{field} is not None:")
             indent = "  "
-        lines.append(f"    {indent}{field}StartVector(builder, len(__fb_self_{field}))")
+        lines.append(f"    {indent}builder.StartVector(1, len(self.{field}), 1)")
         lines.append(f"    {indent}for o in reversed(__fb_self_{field}):")
         lines.append(f"    {indent}    builder.{prepend}(o)")
         lines.append(f"    {indent}__fb_self_{field}_offset = builder.EndVector()")
 
+    for field, _, slot_idx, is_optional in lists_of_tables:
+        lines.append(f"    __fb_self_{field} = self.{field}")
+
+        indent = ""
+        if is_optional:
+            lines.append(f"    if __fb_self_{field} is not None:")
+            indent = "    "
+
+        lines.append(
+            f"    {indent}offsets = [t.__fb_add_to_builder__(builder, strs, nodes) for t in __fb_self_{field}]"
+        )
+        lines.append(f"    {indent}builder.StartVector(4, len(offsets), 4)")
+        lines.append(
+            f"    {indent}for o in reversed(offsets): builder.PrependUOffsetTRelative(o)"
+        )
+        lines.append(f"    {indent}nodes[id(__fb_self_{field})] = builder.EndVector()")
+
     lines.append(f"    builder.StartObject({num_slots})")
 
-    for field in string_fields:
-        norm_field_name = _normalize_fn(field)
-        field_starter_name = f"{name}Add{norm_field_name}"
-        field_start = getattr(mod, field_starter_name)
-        slot_num, default = _get_offsets_for_string(field_start)
+    for field, slot_idx in string_fields:
         lines.append(
-            f"    builder.PrependUOffsetTRelativeSlot({slot_num}, strs[__fb_self_{field}], {default})"
+            f"    builder.PrependUOffsetTRelativeSlot({slot_idx}, strs[__fb_self_{field}], 0)"
         )
 
-    for field in optional_strings:
-        norm_field_name = _normalize_fn(field)
-        field_starter_name = f"{name}Add{norm_field_name}"
-        field_start = getattr(mod, field_starter_name)
-        globs[field_starter_name] = field_start
+    for field, slot_idx in optional_strings:
         lines.append(f"    if __fb_self_{field} is not None:")
-        lines.append(f"        {field_starter_name}(builder, strs[__fb_self_{field}])")
-
-    for field in byte_fields:
-        norm_field_name = _normalize_fn(field)
-        field_starter_name = f"{name}Add{norm_field_name}"
-        field_start = getattr(mod, field_starter_name)
-        slot_num, default = _get_offsets_for_string(field_start)
         lines.append(
-            f"    builder.PrependUOffsetTRelativeSlot({slot_num}, nodes[id(__fb_self_{field})], {default})"
+            f"        builder.PrependUOffsetTRelativeSlot({slot_idx}, strs[__fb_self_{field}], 0)"
         )
 
-    for field in optional_bytes:
-        norm_field_name = _normalize_fn(field)
-        field_starter_name = f"{name}Add{norm_field_name}"
-        field_start = getattr(mod, field_starter_name)
-        slot_num, default = _get_offsets_for_string(field_start)
+    for field, slot_idx in byte_fields:
+        lines.append(
+            f"    builder.PrependUOffsetTRelativeSlot({slot_idx}, nodes[id(__fb_self_{field})], 0)"
+        )
+
+    for field, slot_idx in optional_bytes:
         lines.append(f"    if __fb_self_{field} is not None:")
         lines.append(
-            f"        builder.PrependUOffsetTRelativeSlot({slot_num}, nodes[id(__fb_self_{field})], {default})"
+            f"        builder.PrependUOffsetTRelativeSlot({slot_idx}, nodes[id(__fb_self_{field})], 0)"
         )
 
     for field, is_optional in lists_of_strings:
@@ -596,63 +677,43 @@ def _make_add_to_builder_fn(
             f"    {prefix}{field_starter_name}(builder, __fb_self_{field}_offset)"
         )
 
-    for field in table_fields + byte_fields:
-        norm_field_name = _normalize_fn(field)
-        field_starter_name = f"{name}Add{norm_field_name}"
-        field_start = getattr(mod, field_starter_name)
-        globs[field_starter_name] = field_start
-        lines.append(f"    {field_starter_name}(builder, nodes[id(self.{field})])")
+    for field, _, slot_idx, is_optional in table_fields:
+        indent = ""
+        if is_optional:
+            lines.append(f"    if self.{field} is not None:")
+            indent = "    "
+        lines.append(
+            f"    {indent}builder.PrependUOffsetTRelativeSlot({slot_idx}, nodes[id(self.{field})], 0)"
+        )
 
-    for field, _, is_optional in lists_of_tables:
-        norm_field_name = _normalize_fn(field)
-        field_starter_name = f"{name}Add{norm_field_name}"
-        field_start = getattr(mod, field_starter_name)
+    for field, _, slot_idx, is_optional in lists_of_tables:
         lines.append(f"    __fb_self_{field} = self.{field}")
-        globs[field_starter_name] = field_start
+        if is_optional:
+            indent = f"if __fb_self_{field} is not None: "
+        else:
+            indent = ""
+        lines.append(
+            f"    {indent}builder.PrependUOffsetTRelativeSlot({slot_idx}, nodes[id(__fb_self_{field})], 0)"
+        )
+
+    for field, slot_idx, _, _, is_optional in lists_of_scalars:
         if is_optional:
             prefix = f"if __fb_self_{field} is not None: "
         else:
             prefix = ""
         lines.append(
-            f"    {prefix}{field_starter_name}(builder, nodes[id(__fb_self_{field})])"
+            f"    {prefix}builder.PrependUOffsetTRelativeSlot({slot_idx}, __fb_self_{field}_offset, 0)"
         )
 
-    for field, _, _, is_optional in lists_of_scalars:
-        norm_field_name = _normalize_fn(field)
-        field_starter_name = f"{name}Add{norm_field_name}"
-        field_start = getattr(mod, field_starter_name)
-        globs[field_starter_name] = field_start
-        if is_optional:
-            prefix = f"if __fb_self_{field} is not None: "
-        else:
-            prefix = ""
+    for field, fb_type, slot_idx, default in scalars:
+        if default is NOTHING:
+            default = SCALAR_TYPE_TO_DEFAULT[fb_type]
         lines.append(
-            f"    {prefix}{field_starter_name}(builder, __fb_self_{field}_offset)"
+            f"    builder.Prepend{fb_type}Slot({slot_idx}, self.{field}, {default})"
         )
 
-    for field in optional_tables:
-        norm_field_name = _normalize_fn(field)
-        field_starter_name = f"{name}Add{norm_field_name}"
-        field_start = getattr(mod, field_starter_name)
-        globs[field_starter_name] = field_start
-        lines.append(f"    if self.{field} is not None:")
-        lines.append(f"        {field_starter_name}(builder, nodes[id(self.{field})])")
-
-    for field in inlines:
-        norm_field_name = _normalize_fn(field)
-        field_starter_name = f"{name}Add{norm_field_name}"
-        field_start = getattr(mod, field_starter_name)
-        globs[field_starter_name] = field_start
-        lines.append(f"    {field_starter_name}(builder, self.{field})")
-
-    for field, union_types, fb_enum in unions:
-        norm_field_name = _normalize_fn(field)
-        type_adder_name = f"{name}Add{norm_field_name}Type"
-        type_adder = getattr(mod, type_adder_name)
-        field_starter_name = f"{name}Add{norm_field_name}"
-        field_start = getattr(mod, field_starter_name)
-
-        union_dict_name = f"{norm_field_name}_union_types"
+    for field, union_types, fb_enum, slot_idx in unions:
+        union_dict_name = f"_{field}_union_types"
         # Unions might be prefixed by a namespace string, depending on how
         # they're defined.
         stripped_union_dict = {k.split("_")[-1]: v for k, v in fb_enum.__dict__.items()}
@@ -667,19 +728,17 @@ def _make_add_to_builder_fn(
         if none_type in union_types:
             union_dict[none_type] = stripped_union_dict["NONE"]
 
-        globs[type_adder_name] = type_adder
-        globs[field_starter_name] = field_start
         globs[union_dict_name] = union_dict
         lines.append(
-            f"    {type_adder_name}(builder, {union_dict_name}[self.{field}.__class__])"
+            f"    builder.PrependUint8Slot({slot_idx}, {union_dict_name}[self.{field}.__class__], 0)"
         )
+        indent = ""
         if none_type in union_types:
             lines.append(f"    if self.{field} is not None:")
-            lines.append(
-                f"        {field_starter_name}(builder, nodes[id(self.{field})])"
-            )
-        else:
-            lines.append(f"    {field_starter_name}(builder, nodes[id(self.{field})])")
+            indent = "    "
+        lines.append(
+            f"    {indent}builder.PrependUOffsetTRelativeSlot({slot_idx+1}, nodes[id(self.{field})], 0)"
+        )
 
     lines.append("    return builder.EndObject()")
     lines.append("")
@@ -690,6 +749,7 @@ def _make_add_to_builder_fn(
         sha1.hexdigest(),
     )
     script = "\n".join(lines)
+    print(script)
     eval(compile(script, unique_filename, "exec"), globs)
 
     linecache.cache[unique_filename] = (
@@ -702,316 +762,39 @@ def _make_add_to_builder_fn(
     return globs["__fb_add_to_builder__"]
 
 
-def _make_from_bytes_fn(cl) -> Callable:
-    """Compile a function to load this model from Flatbuffer bytes."""
-    name = cl.__fb_class__.__name__
-    globs = {"_fb_cls_loader": getattr(cl.__fb_class__, f"GetRootAs{name}")}
-    lines = []
-    lines.append("@classmethod")
-    lines.append("def __fb_from_bytes__(cls, data):")
-    lines.append("    fb_model = _fb_cls_loader(data, 0)")
-    lines.append("    return cls.__fb_from_fb__(fb_model)")
+def _guess_num_slots(cl) -> int:
+    """Guess the number of slots for an attrs class.
 
-    lines.append("")
-    sha1 = hashlib.sha1()
-    sha1.update(name.encode("utf-8"))
-    unique_filename = "<FB from_bytes for %s, %s>" % (name, sha1.hexdigest())
-    script = "\n".join(lines)
-    eval(compile(script, unique_filename, "exec"), globs)
-
-    linecache.cache[unique_filename] = (
-        len(script),
-        None,
-        script.splitlines(True),
-        unique_filename,
-    )
-
-    return globs["__fb_from_bytes__"]
-
-
-def _make_from_fb_fn(
-    cl,
-    string_fields: List[str],
-    optional_strings: List[str],
-    byte_fields: List[str],
-    optional_bytes: List[str],
-    enum_fields: List[str],
-    table_fields: List[str],
-    optional_tables: List[str],
-    lists_of_tables: List[Tuple[str, Type, bool]],
-    lists_of_strings: List[Tuple[str, bool]],
-    union_fields: List[Tuple[str, List[Type], Type]],
-    inlines: List[str],
-    lists_of_scalars: List[Tuple[str, Type, Any, bool]],
-    lists_of_enums: List[Tuple[str, Type, Any]],
-    seqs_of_tables: List[Tuple[str, Type, bool]],
-    seqs_of_scalars: List[Tuple[str, Type]],
-    seqs_of_enums: List[Tuple[str, Type]],
-    seqs_of_strings: List[Tuple[str, bool]],
-) -> Callable:
-    """Compile a function to init an attrs model from a FB model."""
-    name = cl.__fb_class__.__name__
-    globs = {}
-    lines = []
-    list_table_fields = {t[0]: t for t in lists_of_tables}
-    seq_table_fields = {t[0]: t for t in seqs_of_tables}
-    union_field_names = {t[0]: t for t in union_fields}
-    lists_of_scalar_names = {t[0]: t[1] for t in lists_of_scalars}
-    seqs_of_scalar_names = {t[0]: t[1] for t in seqs_of_scalars}
-    lists_of_enum_names = {t[0]: t for t in lists_of_enums}
-    seqs_of_enum_names = {t[0]: t for t in seqs_of_enums}
-    lists_of_strings_names = {t[0]: t[1] for t in lists_of_strings}
-    seqs_of_strings_names = {t[0]: t[1] for t in seqs_of_strings}
-
-    optionals = {f[0] for f in lists_of_scalars if f[3]}
-
-    from_fb = "__fb_from_fb__"
-    lines.append("@classmethod")
-    lines.append("def __fb_from_fb__(cls, fb_instance):")
-    for fname in optional_bytes:
-        norm_field_name = _normalize_fn(fname)
-        lines.append(f"    __fb_{fname} = fb_instance.{norm_field_name}AsNumpy()")
-    lines.append("    return cls(")
-    for field in fields(cl):
-        fname = field.name
-        norm_field_name = _normalize_fn(fname)
-        if fname in string_fields:
-            lines.append(f"        fb_instance.{norm_field_name}().decode('utf8'),")
-        elif fname in optional_strings:
-            lines.append(
-                f"        fb_instance.{norm_field_name}().decode('utf8') if fb_instance.{norm_field_name}() is not None else None,"
-            )
-        elif fname in byte_fields:
-            lines.append(f"        fb_instance.{norm_field_name}AsNumpy().tobytes(),")
-        elif fname in optional_bytes:
-            lines.append(
-                f"        __fb_{fname}.tobytes() if not isinstance(__fb_{fname}, int) else None,"
-            )
-        elif fname in enum_fields:
-            enum_name = field.type.__name__
-            globs[enum_name] = field.type
-            lines.append(f"        {enum_name}(fb_instance.{norm_field_name}()),")
-        elif fname in table_fields:
-            table_name = field.type.__name__
-            globs[table_name] = field.type
-            lines.append(
-                f"        {table_name}.{from_fb}(fb_instance.{norm_field_name}()),"
-            )
-        elif fname in optional_tables:
-            inner_cl = field.type.__args__[0]
-            table_name = inner_cl.__name__
-            globs[table_name] = inner_cl
-            lines.append(
-                f"        {table_name}.{from_fb}(fb_instance.{norm_field_name}()) if fb_instance.{norm_field_name}() is not None else None,"
-            )
-        elif fname in list_table_fields:
-            _, type, is_optional = list_table_fields[fname]
-            tn = type.__name__
-            globs[tn] = type
-
-            for_ = f"for i in range(fb_instance.{norm_field_name}Length())"
-            line = f"        [{tn}.{from_fb}(fb_instance.{norm_field_name}(i)) {for_}]"
-
-            if is_optional:
-                # We need the field offset since the Python bindings hide them.
-                offset = _get_table_list_offset(cl, fname)
-                # We adjust the previous line a little
-                line = (
-                    f"{line} if int(fb_instance._tab.Offset({offset})) != 0 else None"
-                )
-            lines.append(f"{line},")
-        elif fname in seq_table_fields:
-            _, type, is_optional = seq_table_fields[fname]
-            tn = type.__name__
-            globs[tn] = type
-            for_ = f"for i in range(fb_instance.{norm_field_name}Length())"
-            line = f"        tuple({tn}.{from_fb}(fb_instance.{norm_field_name}(i)) {for_})"
-            if is_optional:
-                # We need the field offset since the Python bindings hide them.
-                offset = _get_table_list_offset(cl, fname)
-                # We adjust the previous line a little
-                line = (
-                    f"{line} if int(fb_instance._tab.Offset({offset})) != 0 else None"
-                )
-            lines.append(f"{line},")
-        elif fname in lists_of_strings_names:
-            is_optional = lists_of_strings_names[fname]
-            for_ = f"for i in range(fb_instance.{norm_field_name}Length())"
-            line = f"        [fb_instance.{norm_field_name}(i).decode('utf8') {for_}]"
-            if is_optional:
-                offset = _get_table_list_offset(cl, fname)
-                # We adjust the previous line a little
-                line = (
-                    f"{line} if int(fb_instance._tab.Offset({offset})) != 0 else None"
-                )
-            lines.append(f"{line},")
-        elif fname in seqs_of_strings_names:
-            is_optional = seqs_of_strings_names[fname]
-            for_ = f"for i in range(fb_instance.{norm_field_name}Length())"
-            line = (
-                f"        tuple(fb_instance.{norm_field_name}(i).decode('utf8') {for_})"
-            )
-            if is_optional:
-                offset = _get_table_list_offset(cl, fname)
-                # We adjust the previous line a little
-                line = (
-                    f"{line} if int(fb_instance._tab.Offset({offset})) != 0 else None"
-                )
-            lines.append(f"{line},")
-        elif fname in inlines:
-            type = field.type
-            globs[f"_{fname}_type"] = type
-            lines.append(f"        _{fname}_type(fb_instance.{norm_field_name}()),")
-        elif fname in union_field_names:
-            # We prepare a dictionary to select the proper class at runtime.
-            # Then we just grab the proper type and instantiate it.
-            _, union_types, union_enum = union_field_names[fname]
-            dn = f"_{fname}_union_dict"
-            union_resolution_dict = {}
-            stripped_union_dict: Dict[str, Any] = {
-                k.split("_")[-1]: v for k, v in union_enum.__dict__.items()
-            }
-
-            for union_type in [u for u in union_types if u is not none_type]:
-                # Unions might be prefixed by a namespace string, depending on how
-                # they're defined.
-                code = stripped_union_dict[union_type.__name__]
-                fb_cls = union_type.__fb_class__
-                attr_model = union_type
-
-                def _load_from_content(table, attr_model=attr_model, fb_cls=fb_cls):
-                    res = fb_cls()
-                    res.Init(table.Bytes, table.Pos)
-                    return attr_model.__fb_from_fb__(res)
-
-                union_resolution_dict[code] = _load_from_content
-
-            if none_type in union_types:
-                none_code = getattr(union_enum, "NONE")
-                union_resolution_dict[none_code] = lambda _: None
-
-            globs[dn] = union_resolution_dict
-            lines.append(
-                f"        {dn}[fb_instance.{norm_field_name}Type()](fb_instance.{norm_field_name}()),"
-            )
-        elif fname in lists_of_scalar_names:
-            for_ = f"for i in range(fb_instance.{norm_field_name}Length())"
-            line = f"        [fb_instance.{norm_field_name}(i) {for_}]"
-            if fname in optionals:
-                # We need the field offset since the Python bindings hide them.
-                _, offset = _get_scalar_list_type(cl, fname)
-                # We adjust the previous line a little
-                line = (
-                    f"{line} if int(fb_instance._tab.Offset({offset})) != 0 else None"
-                )
-            lines.append(line + ", ")
-        elif fname in seqs_of_scalar_names:
-            for_ = f"for i in range(fb_instance.{norm_field_name}Length())"
-            lines.append(f"        tuple(fb_instance.{norm_field_name}(i) {for_}),")
-        elif fname in lists_of_enum_names:
-            enum_type = lists_of_enum_names[fname][1]
-            dn = f"_{fname}_enum"
-            globs[dn] = enum_type
-            for_ = f"for i in range(fb_instance.{norm_field_name}Length())"
-            lines.append(f"        [{dn}(fb_instance.{norm_field_name}(i)) {for_}],")
-        elif fname in seqs_of_enum_names:
-            enum_type = seqs_of_enum_names[fname][1]
-            dn = f"_{fname}_enum"
-            globs[dn] = enum_type
-            for_ = f"for i in range(fb_instance.{norm_field_name}Length())"
-            lines.append(
-                f"        tuple({dn}(fb_instance.{norm_field_name}(i)) {for_}),"
-            )
-        else:
-            raise ValueError(f"Can't handle {fname} (type {field.type}).")
-
-    lines.append("    )")
-    lines.append("")
-
-    sha1 = hashlib.sha1()
-    sha1.update(name.encode("utf-8"))
-    unique_filename = "<FB from_fb for %s, %s>" % (name, sha1.hexdigest())
-    script = "\n".join(lines)
-    eval(compile(script, unique_filename, "exec"), globs)
-
-    linecache.cache[unique_filename] = (
-        len(script),
-        None,
-        script.splitlines(True),
-        unique_filename,
-    )
-
-    return globs["__fb_from_fb__"]
-
-
-def _get_num_slots(fn) -> int:
-    class DummyBuilder:
-        def StartObject(self, slot_num):
-            self.slot_num = slot_num
-
-    d = DummyBuilder()
-    fn(d)
-    return d.slot_num
-
-
-def _get_offsets_for_string(fn) -> Tuple[int, int]:
-    sentinel = 1024
-
-    class DummyBuilder:
-        def PrependUOffsetTRelativeSlot(self, slot_num, offset, default):
-            if offset is not sentinel:
-                raise ValueError("Failed extracting parameters.")
-            self.slot_num = slot_num
-            self.default = default
-
-    d = DummyBuilder()
-    fn(d, sentinel)
-    return d.slot_num, d.default
-
-
-def _get_scalar_list_type(cl, fname: str) -> Tuple[Any, int]:
-    """Fish out the scalar type and field offset for a lists of scalars."""
-
-    class DummyTab:
-        def Offset(self, offset):
-            self.field_offset = offset
-            return 1
-
-        def GetVectorAsNumpy(self, number_type, _):
-            self.scalar_type = number_type
-            return object()
-
-    tab = DummyTab()
-    inst = cl.__fb_class__()
-    inst._tab = tab
-    norm_field_name = _normalize_fn(fname)
-    getattr(inst, f"{norm_field_name}AsNumpy")()
-
-    return tab.scalar_type, tab.field_offset
-
-
-def _get_table_list_offset(cl, fname: str) -> int:
-    class DummyTab:
-        def Offset(self, offset):
-            self.field_offset = offset
-            return 0
-
-    tab = DummyTab()
-    inst = cl.__fb_class__()
-    inst._tab = tab
-    norm_field_name = _normalize_fn(fname)
-    getattr(inst, f"{norm_field_name}Length")()
-
-    return tab.field_offset
-
-
-def _normalize_fn(fname: str) -> str:
-    """The name needs to be capitalized.
-
-    If there are two or more consecutive capitals:
-    * the cluster is title-cased (isNPC -> isNpc)
+    Each attribute is one slot, unions being two.
     """
-    res = sub("[A-Z]+", lambda m: m.group(0).title(), fname)
-    # Title-casing needs to happen after the caps processing.
-    res = f"{fname[0].upper()}{res[1:]}"
-    return res
+    return len(fields(cl)) + sum(
+        getattr(a.type, "__origin__", None) is Union for a in fields(cl)
+    )
+
+
+HELPER_TYPE_TO_SCALAR_TYPE: Final[dict[type, ScalarType]] = {
+    Uint8: "Uint8",
+    Uint16: "Uint16",
+    Uint32: "Uint32",
+    Uint64: "Uint64",
+    Int8: "Int8",
+    Int16: "Int16",
+    Int32: "Int32",
+    bool: "Bool",
+    Float: "Float32",
+    Float64: "Float64",
+    Int64: "Int64",
+}
+SCALAR_TYPE_TO_PREPEND: Final[dict[ScalarType, str]] = {
+    "Bool": "PrependBool",
+    "Uint8": "PrependUint8",
+    "Uint16": "PrependUint16",
+    "Uint32": "PrependUint32",
+    "Uint64": "PrependUint64",
+    "Int8": "PrependInt8",
+    "Int16": "PrependInt16",
+    "Int32": "PrependInt32",
+    "Int64": "PrependInt64",
+    "Float32": "PrependFloat32",
+    "Float64": "PrependFloat64",
+}

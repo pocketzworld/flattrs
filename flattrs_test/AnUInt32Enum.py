@@ -2,6 +2,6 @@
 
 # namespace: flattrs_test
 
-class ASimpleByteEnum(object):
-    FOUR = -127
-    THREE = 0
+class AnUInt32Enum(object):
+    THIRTEEN = 0
+    FOURTEEN = 4000000000

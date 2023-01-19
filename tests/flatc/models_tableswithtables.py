@@ -10,16 +10,16 @@ from flattrs_test.UnionOfTables import UnionOfTables
 from .models_common import AllScalars, Common1
 
 
-@Flatbuffer(UnionOfTables)
-class UnionOfTables:
-    innerUnion: Union[Common1, AllScalars] = attr.ib(metadata={UNION_CL: CommonUnion})
-
-
 @from_package(flattrs_test)
 class ContainsTable:
-    inner: Common1 = attr.ib()
+    inner: Common1
 
 
 @from_package(flattrs_test)
 class OptionalTable:
-    inner: Optional[Common1] = attr.ib()
+    inner: Common1 | None
+
+
+# @Flatbuffer(UnionOfTables)
+# class UnionOfTables:
+#     innerUnion: Union[Common1, AllScalars] = attr.ib(metadata={UNION_CL: CommonUnion})
