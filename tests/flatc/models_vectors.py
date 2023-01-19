@@ -109,14 +109,14 @@ class ByteArrayTable:
     contents: bytes
 
 
-# @Flatbuffer(OptionalByteArrayTable)
-# class OptionalByteArrayTable:
-#     contents: Optional[bytes] = attr.ib()
+@Flatbuffer(OptionalByteArrayTable)
+class OptionalByteArrayTable:
+    contents: bytes | None
 
 
-# @Flatbuffer(VectorOfEnums)
-# class VectorOfEnums:
-#     enums: List[ASimpleUByteEnum] = attr.ib()
+@Flatbuffer(VectorOfEnums)
+class VectorOfEnums:
+    enums: list[ASimpleUByteEnum]
 
 
 # @from_package(flattrs_test, frozen=True)

@@ -25,10 +25,13 @@ from ..strats import (
     uint32s,
     uint64s,
 )
+from .models_enums import ASimpleUByteEnum
 from .models_vectors import (
     ByteArrayTable,
+    OptionalByteArrayTable,
     OptionalVectorsOfScalars,
     VectorOfCommon1,
+    VectorOfEnums,
     VectorOfOptionalCommon1,
     VectorsOfBools,
     VectorsOfInts,
@@ -120,4 +123,14 @@ def test_vectors_of_optional_common1s_rt(inst: VectorOfOptionalCommon1):
 
 @given(bytearray_tables)
 def test_bytearray_tables(inst: ByteArrayTable) -> None:
+    assert inst == model_from_bytes(inst.__class__, model_to_bytes(inst))
+
+
+@given((binary() | none()).map(OptionalByteArrayTable))
+def test_optional_bytearray_tables(inst: OptionalByteArrayTable) -> None:
+    assert inst == model_from_bytes(inst.__class__, model_to_bytes(inst))
+
+
+@given(lists(sampled_from(ASimpleUByteEnum)).map(VectorOfEnums))
+def test_vectors_of_enums(inst: VectorOfEnums) -> None:
     assert inst == model_from_bytes(inst.__class__, model_to_bytes(inst))

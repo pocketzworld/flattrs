@@ -1,6 +1,18 @@
 from typing import Final
 
 from ._types import ScalarType
+from .types import (
+    Float,
+    Float64,
+    Int8,
+    Int16,
+    Int32,
+    Int64,
+    Uint8,
+    Uint16,
+    Uint32,
+    Uint64,
+)
 
 SCALAR_TYPE_TO_PYTHON: Final[dict[ScalarType, type]] = {
     "Uint8": int,
@@ -30,4 +42,18 @@ SCALAR_TYPE_TO_DEFAULT: Final[dict[ScalarType, str]] = {
     "Int32": "0",
     "Int64": "0",
     "Bool": "False",
+}
+
+HELPER_TYPE_TO_SCALAR_TYPE: Final[dict[type, ScalarType]] = {
+    Uint8: "Uint8",
+    Uint16: "Uint16",
+    Uint32: "Uint32",
+    Uint64: "Uint64",
+    Int8: "Int8",
+    Int16: "Int16",
+    Int32: "Int32",
+    bool: "Bool",
+    Float: "Float32",
+    Float64: "Float64",
+    Int64: "Int64",
 }

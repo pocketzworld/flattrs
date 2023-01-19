@@ -13,6 +13,7 @@ from flattr.types import (
 )
 
 from .models_common import Common1
+from .models_enums import ASimpleUByteEnum
 
 
 @flattrs
@@ -71,3 +72,13 @@ class VectorOfOptionalCommon1:
 @flattrs
 class ByteArrayTable:
     contents: bytes
+
+
+@flattrs
+class OptionalByteArrayTable:
+    contents: bytes | None
+
+
+@flattrs
+class VectorOfEnums:
+    enums: list[ASimpleUByteEnum]
