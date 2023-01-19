@@ -3,8 +3,8 @@ from hypothesis.strategies import DrawFn, composite, lists
 
 from flattr import model_to_bytes
 
-from ..models_vectors import VectorsOfFloats, VectorsOfInts
-from ..test_vectors import (
+from ..flatc.models_vectors import VectorsOfFloats, VectorsOfInts
+from ..flatc.test_vectors import (
     float32s,
     float64s,
     int8s,

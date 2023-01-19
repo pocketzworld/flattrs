@@ -24,6 +24,7 @@ setup(
             "cython==0.29.32",
             "coverage",
             "tox==4.0.11",
+            "cattrs",
         ]
     },
     package_data={"": ["*.pxd", "*.pyx", "py.typed"]},

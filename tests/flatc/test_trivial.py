@@ -14,7 +14,9 @@ from hypothesis.strategies import (
 
 from flattr import model_from_bytes, model_to_bytes
 
-from .models import (
+from .models_enums import ASimpleByteEnum
+from .models_trivial import (
+    HasCaps,
     JustADouble,
     JustAFloat,
     JustAnEnum,
@@ -22,10 +24,7 @@ from .models import (
     JustAString,
     JustBytes,
     JustOptionalBytes,
-    ListOfStrings,
 )
-from .models_enums import ASimpleByteEnum
-from .models_trivial import HasCaps
 
 
 @composite
@@ -61,11 +60,6 @@ def just_a_doubles(draw):
 @composite
 def just_a_byte_enums(draw):
     return JustAnEnum(draw(sampled_from(ASimpleByteEnum)))
-
-
-@composite
-def lists_of_strings(draw):
-    return ListOfStrings(draw(lists(text())))
 
 
 @given(just_a_strings())
@@ -106,11 +100,6 @@ def test_just_a_simple_byte_enum_rt(inst):
     assert inst == model_from_bytes(inst.__class__, model_to_bytes(inst))
 
 
-@given(lists_of_strings())
-def test_lists_of_strings_rt(inst):
-    assert inst == model_from_bytes(inst.__class__, model_to_bytes(inst))
-
-
 @given(text().map(lambda t: HasCaps(t, t)))
-def test_has_caps(inst):
+def test_has_caps(inst: HasCaps) -> bool:
     assert inst == model_from_bytes(inst.__class__, model_to_bytes(inst))

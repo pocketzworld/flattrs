@@ -1,22 +1,23 @@
 """Test serialization and deserialization of common tables."""
+from attrs import fields
 from hypothesis import given
 from hypothesis.strategies import booleans, composite, text
 
 from flattr import model_from_bytes, model_to_bytes
 
-from .models_common import Common1, AllScalars, AllScalarsWithDefaults
-from .strats import (
-    uint8s,
-    uint16s,
-    uint32s,
-    uint64s,
+from ..strats import (
+    float32s,
+    float64s,
     int8s,
     int16s,
     int32s,
     int64s,
-    float32s,
-    float64s,
+    uint8s,
+    uint16s,
+    uint32s,
+    uint64s,
 )
+from .models_common import AllScalars, AllScalarsWithDefaults, Common1
 
 
 @composite
@@ -59,21 +60,23 @@ def all_scalars_with_defaults(draw):
 
 
 @given(common1s())
-def test_common1(inst):
-    assert inst == model_from_bytes(inst.__class__, model_to_bytes(inst))
+def test_common1(inst: Common1) -> None:
+    restruct = model_from_bytes(inst.__class__, model_to_bytes(inst))
+    assert inst == restruct
+    assert isinstance(restruct.aSmallInt, int)
 
 
 @given(common1s())
-def test_common1_repr(inst):
+def test_common1_repr(inst) -> None:
     """Common1 has an overriden repr."""
     assert repr(inst) == f"{inst.id}:{inst.aSmallInt}:{inst.aBigInt}"
 
 
 @given(all_scalars())
-def test_all_scalars(inst):
+def test_all_scalars(inst: AllScalars) -> None:
     assert inst == model_from_bytes(inst.__class__, model_to_bytes(inst))
 
 
 @given(all_scalars_with_defaults())
-def test_all_scalars_with_defaults(inst):
+def test_all_scalars_with_defaults(inst: AllScalarsWithDefaults) -> None:
     assert inst == model_from_bytes(inst.__class__, model_to_bytes(inst))

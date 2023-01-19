@@ -1,31 +1,32 @@
-from flattr.cflattr.builder import (
-    writeBool,
-    writeUint8,
-    writeUint16,
-    writeUint32,
-    writeUint64,
-    writeInt8,
-    writeInt16,
-    writeInt32,
-    writeInt64,
-    writeFloat32,
-    writeFloat64,
-)
 from struct import Struct, pack, unpack
 
 from hypothesis import given
 from hypothesis.strategies import booleans, floats
 
-from .strats import (
-    uint8s,
-    uint16s,
-    uint32s,
-    uint64s,
+from flattr.cflattr.builder import (
+    writeBool,
+    writeFloat32,
+    writeFloat64,
+    writeInt8,
+    writeInt16,
+    writeInt32,
+    writeInt64,
+    writeUint8,
+    writeUint16,
+    writeUint32,
+    writeUint64,
+)
+
+from ..strats import (
+    float64s,
     int8s,
     int16s,
     int32s,
     int64s,
-    float64s,
+    uint8s,
+    uint16s,
+    uint32s,
+    uint64s,
 )
 
 

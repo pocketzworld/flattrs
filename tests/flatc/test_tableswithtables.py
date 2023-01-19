@@ -1,6 +1,5 @@
 from hypothesis import given
-from hypothesis.strategies import composite
-from hypothesis.strategies._internal.core import booleans
+from hypothesis.strategies import DrawFn, booleans, composite, none
 
 from flattr import model_from_bytes, model_to_bytes
 
@@ -9,20 +8,18 @@ from .test_common import common1s
 
 
 @composite
-def contains_tables(draw):
+def contains_tables(draw: DrawFn):
     return ContainsTable(draw(common1s()))
 
 
-@composite
-def optional_tables(draw):
-    return OptionalTable(draw(common1s()) if draw(booleans()) else None)
+optional_tables = (common1s() | none()).map(OptionalTable)
 
 
 @given(contains_tables())
-def test_contains_tables(inst):
+def test_contains_tables(inst: ContainsTable) -> None:
     assert inst == model_from_bytes(inst.__class__, model_to_bytes(inst))
 
 
-@given(optional_tables())
-def test_optional_tables(inst):
+@given(optional_tables)
+def test_optional_tables(inst: OptionalTable) -> None:
     assert inst == model_from_bytes(inst.__class__, model_to_bytes(inst))

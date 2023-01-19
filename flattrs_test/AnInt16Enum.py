@@ -2,6 +2,6 @@
 
 # namespace: flattrs_test
 
-class ASimpleByteEnum(object):
-    FOUR = -127
-    THREE = 0
+class AnInt16Enum(object):
+    ELEVEN = -30000
+    TWELVE = -29999

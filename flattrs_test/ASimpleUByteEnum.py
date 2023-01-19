@@ -4,4 +4,4 @@
 
 class ASimpleUByteEnum(object):
     ONE = 0
-    TWO = 1
+    TWO = 255

@@ -1,16 +1,14 @@
-from typing import List, Optional
-
 import attr
 
 import flattrs_test
 from flattr import Flatbuffer
+from flattrs_test.HasCaps import HasCaps
 from flattrs_test.JustADouble import JustADouble
 from flattrs_test.JustAFloat import JustAFloat
 from flattrs_test.JustAnOptionalString import JustAnOptionalString
 from flattrs_test.JustAString import JustAString
 from flattrs_test.JustBytes import JustBytes
 from flattrs_test.JustOptionalBytes import JustOptionalBytes
-from flattrs_test.ListOfStrings import ListOfStrings
 
 from .models_enums import ASimpleByteEnum
 
@@ -22,7 +20,7 @@ class JustAString:
 
 @Flatbuffer(JustAnOptionalString)
 class JustAnOptionalString:
-    id: Optional[str] = attr.ib()
+    id: str | None
 
 
 @Flatbuffer(JustBytes)
@@ -32,24 +30,25 @@ class JustBytes:
 
 @Flatbuffer(JustOptionalBytes)
 class JustOptionalBytes:
-    value: Optional[bytes] = attr.ib()
+    value: bytes | None
 
 
 @Flatbuffer(JustAFloat)
 class JustAFloat:
-    value: float = attr.ib()
+    value: float
 
 
 @Flatbuffer(JustADouble)
 class JustADouble:
-    value: float = attr.ib()
+    value: float
 
 
 @Flatbuffer.from_package(flattrs_test)
 class JustAnEnum:
-    value: ASimpleByteEnum = attr.ib()
+    value: ASimpleByteEnum
 
 
-@Flatbuffer(ListOfStrings)
-class ListOfStrings:
-    content: List[str] = attr.ib()
+@Flatbuffer(HasCaps)
+class HasCaps:
+    fieldCAPS: str
+    fieldCAPSInMiddle: str
