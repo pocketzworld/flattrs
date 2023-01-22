@@ -20,24 +20,16 @@ from ..flatc.test_vectors import (
     bytearray_tables,
     optional_bytearray_tables,
     optional_vectors_of_scalars,
+    optional_vectors_of_strings,
     vectors_of_common1s,
     vectors_of_enums,
+    vectors_of_floats,
     vectors_of_optional_common1s,
     vectors_of_scalars,
+    vectors_of_strings,
 )
 from ..flattrs import models_vectors as models_vectors_flattrs
-from ..strats import (
-    float32s,
-    float64s,
-    int8s,
-    int16s,
-    int32s,
-    int64s,
-    uint8s,
-    uint16s,
-    uint32s,
-    uint64s,
-)
+from ..strats import int8s, int16s, int32s, int64s
 
 
 @given(
@@ -53,6 +45,30 @@ def test_vectors_of_bools(
         models_vectors_flatc.VectorsOfBools, models_vectors_flattrs.VectorsOfBools
     ]
 ):
+    flatc, flattrs = insts
+    flatc_bytes = model_to_bytes(flatc)
+    flattrs_bytes = model_to_bytes(flattrs)
+    assert flatc_bytes == flattrs_bytes
+
+    assert asdict(model_from_bytes(flatc.__class__, flattrs_bytes)) == asdict(
+        model_from_bytes(flattrs.__class__, flatc_bytes)
+    )
+
+    assert repr(model_from_bytes(flatc.__class__, flatc_bytes)) == repr(
+        model_from_bytes(flattrs.__class__, flatc_bytes)
+    )
+
+
+@given(
+    vectors_of_floats.map(
+        lambda v: (v, structure(unstructure(v), models_vectors_flattrs.VectorsOfFloats))
+    )
+)
+def test_vectors_of_floats(
+    insts: tuple[
+        models_vectors_flatc.VectorsOfFloats, models_vectors_flattrs.VectorsOfFloats
+    ]
+) -> None:
     flatc, flattrs = insts
     flatc_bytes = model_to_bytes(flatc)
     flattrs_bytes = model_to_bytes(flattrs)
@@ -266,6 +282,62 @@ def test_opt_bytearray_tables(
         models_vectors_flattrs.VectorOfEnums,
     ]
 ):
+    flatc, flattrs = insts
+    flatc_bytes = model_to_bytes(flatc)
+    flattrs_bytes = model_to_bytes(flattrs)
+    assert flatc_bytes == flattrs_bytes
+
+    assert asdict(model_from_bytes(flatc.__class__, flatc_bytes)) == asdict(
+        model_from_bytes(flattrs.__class__, flatc_bytes)
+    )
+
+    assert repr(model_from_bytes(flatc.__class__, flatc_bytes)) == repr(
+        model_from_bytes(flattrs.__class__, flatc_bytes)
+    )
+
+
+@given(
+    vectors_of_strings.map(
+        lambda v: (
+            v,
+            structure(unstructure(v), models_vectors_flattrs.VectorOfStrings),
+        )
+    )
+)
+def test_vectors_of_strings(
+    insts: tuple[
+        models_vectors_flatc.VectorOfStrings,
+        models_vectors_flattrs.VectorOfStrings,
+    ]
+):
+    flatc, flattrs = insts
+    flatc_bytes = model_to_bytes(flatc)
+    flattrs_bytes = model_to_bytes(flattrs)
+    assert flatc_bytes == flattrs_bytes
+
+    assert asdict(model_from_bytes(flatc.__class__, flatc_bytes)) == asdict(
+        model_from_bytes(flattrs.__class__, flatc_bytes)
+    )
+
+    assert repr(model_from_bytes(flatc.__class__, flatc_bytes)) == repr(
+        model_from_bytes(flattrs.__class__, flatc_bytes)
+    )
+
+
+@given(
+    optional_vectors_of_strings.map(
+        lambda v: (
+            v,
+            structure(unstructure(v), models_vectors_flattrs.OptionalVectorOfStrings),
+        )
+    )
+)
+def test_opt_vectors_of_strings(
+    insts: tuple[
+        models_vectors_flatc.OptionalVectorOfStrings,
+        models_vectors_flattrs.OptionalVectorOfStrings,
+    ]
+) -> None:
     flatc, flattrs = insts
     flatc_bytes = model_to_bytes(flatc)
     flattrs_bytes = model_to_bytes(flattrs)

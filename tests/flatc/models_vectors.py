@@ -1,13 +1,9 @@
-from typing import List, Optional, Sequence
-
-import attr
-
 import flattrs_test
 from flattr import Flatbuffer, from_package
 from flattrs_test.ByteArrayTable import ByteArrayTable
 from flattrs_test.OptionalByteArrayTable import OptionalByteArrayTable
 from flattrs_test.OptionalVectorsOfScalars import OptionalVectorsOfScalars
-from flattrs_test.SeqVectorOfOptionalCommon1 import SeqVectorOfOptionalCommon1
+from flattrs_test.OptVectorOfEnums import OptVectorOfEnums
 from flattrs_test.VectorOfCommon1 import VectorOfCommon1
 from flattrs_test.VectorOfEnums import VectorOfEnums
 from flattrs_test.VectorOfOptionalCommon1 import VectorOfOptionalCommon1
@@ -22,7 +18,7 @@ from .models_enums import ASimpleUByteEnum
 
 @Flatbuffer(VectorsOfBools)
 class VectorsOfBools:
-    vecOfBools: List[bool]
+    vecOfBools: list[bool]
 
 
 @Flatbuffer(VectorsOfInts)
@@ -33,10 +29,10 @@ class VectorsOfInts:
     vecOfInt64s: list[int]
 
 
-# @Flatbuffer(VectorsOfFloats)
-# class VectorsOfFloats:
-#     vecOfFloat32s: List[float] = attr.ib()
-#     vecOfFloat64s: List[float] = attr.ib()
+@Flatbuffer(VectorsOfFloats)
+class VectorsOfFloats:
+    vecOfFloat32s: list[float]
+    vecOfFloat64s: list[float]
 
 
 @Flatbuffer(VectorsOfScalars)
@@ -119,6 +115,11 @@ class VectorOfEnums:
     enums: list[ASimpleUByteEnum]
 
 
+@Flatbuffer(OptVectorOfEnums)
+class OptVectorOfEnums:
+    enums: list[ASimpleUByteEnum] | None
+
+
 # @from_package(flattrs_test, frozen=True)
 # class SeqVectorOfEnums:
 #     enums: Sequence[ASimpleUByteEnum] = attr.ib()
@@ -129,9 +130,14 @@ class VectorOfEnums:
 #     strings: Sequence[str] = attr.ib()
 
 
-# @from_package(flattrs_test)
-# class OptionalVectorOfStrings:
-#     strings: Optional[List[str]] = attr.ib()
+@from_package(flattrs_test)
+class VectorOfStrings:
+    strings: list[str]
+
+
+@from_package(flattrs_test)
+class OptionalVectorOfStrings:
+    strings: list[str] | None
 
 
 # @from_package(flattrs_test)

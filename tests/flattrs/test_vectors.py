@@ -29,20 +29,19 @@ from .models_enums import ASimpleUByteEnum
 from .models_vectors import (
     ByteArrayTable,
     OptionalByteArrayTable,
+    OptionalVectorOfStrings,
     OptionalVectorsOfScalars,
+    OptVectorOfEnums,
     VectorOfCommon1,
     VectorOfEnums,
     VectorOfOptionalCommon1,
+    VectorOfStrings,
     VectorsOfBools,
+    VectorsOfFloats,
     VectorsOfInts,
     VectorsOfScalars,
 )
 from .test_common import common1s
-
-
-@given(lists(booleans()).map(VectorsOfBools))
-def test_vectors_of_bools(inst: VectorsOfBools):
-    assert inst == model_from_bytes(inst.__class__, model_to_bytes(inst))
 
 
 @composite
@@ -92,8 +91,18 @@ def vectors_of_optional_common1s(draw):
 bytearray_tables = binary().map(ByteArrayTable)
 
 
+@given(lists(booleans()).map(VectorsOfBools))
+def test_vectors_of_bools(inst: VectorsOfBools) -> None:
+    assert inst == model_from_bytes(inst.__class__, model_to_bytes(inst))
+
+
+@given(tuples(lists(float32s), lists(float64s)).map(lambda vs: VectorsOfFloats(*vs)))
+def test_vectors_of_floats(inst: VectorsOfFloats) -> None:
+    assert inst == model_from_bytes(inst.__class__, model_to_bytes(inst))
+
+
 @given(vectors_of_scalars())
-def test_vectors_of_scalars_rt(inst: VectorsOfScalars):
+def test_vectors_of_scalars(inst: VectorsOfScalars) -> None:
     assert inst == model_from_bytes(inst.__class__, model_to_bytes(inst))
 
 
@@ -112,12 +121,12 @@ def test_optional_vectors_of_scalars(inst: OptionalVectorsOfScalars) -> None:
 
 
 @given(vectors_of_common1s())
-def test_vectors_of_common1s_rt(inst: VectorOfCommon1) -> None:
+def test_vectors_of_common1s(inst: VectorOfCommon1) -> None:
     assert inst == model_from_bytes(inst.__class__, model_to_bytes(inst))
 
 
 @given(vectors_of_optional_common1s())
-def test_vectors_of_optional_common1s_rt(inst: VectorOfOptionalCommon1):
+def test_vectors_of_optional_common1s(inst: VectorOfOptionalCommon1):
     assert inst == model_from_bytes(inst.__class__, model_to_bytes(inst))
 
 
@@ -133,4 +142,19 @@ def test_optional_bytearray_tables(inst: OptionalByteArrayTable) -> None:
 
 @given(lists(sampled_from(ASimpleUByteEnum)).map(VectorOfEnums))
 def test_vectors_of_enums(inst: VectorOfEnums) -> None:
+    assert inst == model_from_bytes(inst.__class__, model_to_bytes(inst))
+
+
+@given((lists(sampled_from(ASimpleUByteEnum)) | none()).map(OptVectorOfEnums))
+def test_opt_vectors_of_enums(inst: OptVectorOfEnums) -> None:
+    assert inst == model_from_bytes(inst.__class__, model_to_bytes(inst))
+
+
+@given(lists(text()).map(VectorOfStrings))
+def test_vectors_of_strings(inst: VectorOfStrings) -> None:
+    assert inst == model_from_bytes(inst.__class__, model_to_bytes(inst))
+
+
+@given((lists(text()) | none()).map(OptionalVectorOfStrings))
+def test_optional_vectors_of_strings(inst: OptionalVectorOfStrings) -> None:
     assert inst == model_from_bytes(inst.__class__, model_to_bytes(inst))

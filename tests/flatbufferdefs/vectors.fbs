@@ -78,6 +78,10 @@ table OptionalByteArrayTable {
 }
 
 table VectorOfEnums {
+    enums: [ASimpleUByteEnum] (required);
+}
+
+table OptVectorOfEnums {
     enums: [ASimpleUByteEnum];
 }
 
@@ -86,6 +90,10 @@ table SeqVectorOfEnums {
 }
 
 table SeqVectorOfStrings {
+    strings: [string] (required);
+}
+
+table VectorOfStrings {
     strings: [string] (required);
 }
 

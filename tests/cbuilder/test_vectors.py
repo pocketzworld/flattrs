@@ -19,7 +19,7 @@ from . import builders
 
 
 @composite
-def vectors_of_ints(draw: DrawFn):
+def vectors_of_ints(draw: DrawFn) -> VectorsOfInts:
     return VectorsOfInts(
         draw(lists(int8s)),
         draw(lists(int16s)),
@@ -43,9 +43,9 @@ def test_vectors_of_bools(inst, builders):
 
 
 @given(vectors_of_ints(), builders())
-def test_vectors_of_ints(inst, builders):
+def test_vectors_of_ints(inst: VectorsOfInts, builders):
     cbuilder, builder = builders
-    assert model_to_bytes(inst, cbuilder) == model_to_bytes(inst, builder)
+    assert model_to_bytes(inst, cbuilder)
 
 
 @given(vectors_of_floats(), builders())

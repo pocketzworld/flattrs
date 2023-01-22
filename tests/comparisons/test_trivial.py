@@ -8,7 +8,6 @@ from flattr import model_from_bytes, model_to_bytes
 from ..flatc import models_enums as models_enums_flatc
 from ..flatc import models_trivial as models_trivial_flatc
 from ..flatc.models_trivial import HasCaps, JustAnOptionalString, JustAString, JustBytes
-from ..flattrs import models_enums as models_enums_flattrs
 from ..flattrs import models_trivial as models_trivial_flattrs
 from ..flattrs.models_trivial import HasCaps as HasCapsFlattrs
 from ..flattrs.models_trivial import JustAnOptionalString as JustAnOptionalStringFlattrs

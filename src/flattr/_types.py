@@ -11,3 +11,4 @@ ScalarType: TypeAlias = Literal[
 ]
 PythonScalarType: TypeAlias = type[int] | type[bool] | type[float]
 Optionality: TypeAlias = bool
+UnionMapping: TypeAlias = dict[int, type]
