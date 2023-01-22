@@ -22,6 +22,12 @@ class VectorsOfBools:
 
 
 @flattrs
+class VectorsOfFloats:
+    vecOfFloat32s: list[Float32]
+    vecOfFloat64s: list[float]
+
+
+@flattrs
 class VectorsOfScalars:
     vecOfBools: list[bool]
     vecOfUint8s: list[Uint8]
@@ -82,3 +88,18 @@ class OptionalByteArrayTable:
 @flattrs
 class VectorOfEnums:
     enums: list[ASimpleUByteEnum]
+
+
+@flattrs
+class OptVectorOfEnums:
+    enums: list[ASimpleUByteEnum] | None
+
+
+@flattrs
+class VectorOfStrings:
+    strings: list[str]
+
+
+@flattrs
+class OptionalVectorOfStrings:
+    strings: list[str] | None

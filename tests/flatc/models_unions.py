@@ -1,6 +1,7 @@
 from typing import Union
 
 import attr
+from attrs import field
 
 from flattr import UNION_CL, Flatbuffer
 from flattrs_test.NestedUnion import NestedUnion
@@ -13,13 +14,13 @@ from .models_nested import NestedJustAString
 
 @Flatbuffer(UnionOfNestedTables)
 class UnionOfNestedTables:
-    innerUnion: Union[Common1, NestedJustAString] = attr.ib(
+    innerUnion: Union[Common1, NestedJustAString] = field(
         metadata={UNION_CL: NestedUnion}
     )
 
 
 @Flatbuffer(UnionOfOptionalTables)
 class UnionOfOptionalTables:
-    innerUnion: Union[None, Common1, NestedJustAString] = attr.ib(
+    innerUnion: Union[None, Common1, NestedJustAString] = field(
         metadata={UNION_CL: NestedUnion}
     )

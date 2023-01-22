@@ -26,6 +26,7 @@ from ._types import (
     PythonScalarType,
     ScalarType,
     SlotNumber,
+    UnionMapping,
 )
 
 none_type = type(None)
@@ -33,15 +34,14 @@ none_type = type(None)
 
 def make_from_fb_fn(
     cl,
-    string_fields: list[FieldName],
-    optional_strings: list[str],
+    string_fields: list[tuple[FieldName, SlotNumber, Optionality]],
     byte_fields: list[str],
     optional_bytes: list[str],
     enum_fields: list[tuple[FieldName, ScalarType, SlotNumber, MaybeDefault]],
     table_fields: list[tuple[FieldName, type, SlotNumber, Optionality]],
     lists_of_tables: list[tuple[str, type, bool]],
-    lists_of_strings: list[tuple[str, bool]],
-    union_fields: list[tuple[str, list[type], type]],
+    lists_of_strings: list[tuple[FieldName, SlotNumber, Optionality]],
+    union_fields: list[tuple[FieldName, tuple[type, ...], UnionMapping, SlotNumber]],
     inlines: list[tuple[FieldName, ScalarType, SlotNumber, MaybeDefault]],
     lists_of_scalars: list[
         tuple[FieldName, SlotNumber, PythonScalarType, ScalarType, Optionality]
@@ -49,10 +49,6 @@ def make_from_fb_fn(
     lists_of_enums: list[
         tuple[FieldName, SlotNumber, PythonScalarType, ScalarType, Optionality]
     ],
-    seqs_of_tables: list[tuple[str, type, bool]],
-    seqs_of_scalars: list[tuple[str, type]],
-    seqs_of_enums: list[tuple[str, type]],
-    seqs_of_strings: list[tuple[str, bool]],
 ) -> Callable:
     """Compile a function to init an attrs model from a FB model, flattrs-style.
 
@@ -62,14 +58,11 @@ def make_from_fb_fn(
     globs = {"_Table": Table}
     lines = []
     inst_lines = []  # Instantiation lines
+    string_names = {s[0]: s for s in string_fields}
     list_table_fields = {t[0]: t for t in lists_of_tables}
-    seq_table_fields = {t[0]: t for t in seqs_of_tables}
     union_field_names = {t[0]: t for t in union_fields}
     lists_of_scalar_names = {t[0]: t for t in lists_of_scalars + lists_of_enums}
-    seqs_of_scalar_names = {t[0]: t[1] for t in seqs_of_scalars}
-    seqs_of_enum_names = {t[0]: t for t in seqs_of_enums}
-    lists_of_strings_names = {t[0]: t[1] for t in lists_of_strings}
-    seqs_of_strings_names = {t[0]: t[1] for t in seqs_of_strings}
+    lists_of_strings_names = {t[0]: t for t in lists_of_strings}
     inline_names = {t[0]: t for t in inlines}
     enum_names = {e[0]: e for e in enum_fields}
     table_names = {t[0]: t for t in table_fields}
@@ -82,15 +75,16 @@ def make_from_fb_fn(
     field_offset = 4
     for field in fields(cl):
         fname = field.name
-        if fname in string_fields:
-            inst_lines.append(
-                f"        tab.String(tab.Pos + tab.Offset({field_offset})).decode(),"
-            )
-            field_offset += 2
-        elif fname in optional_strings:
-            inst_lines.append(
-                f"        tab.String(tab.Pos + o).decode() if (o := tab.Offset({field_offset})) != 0 else None,"
-            )
+        if fname in string_names:
+            string_def = string_names[fname]
+            if string_def[2]:
+                inst_lines.append(
+                    f"        tab.String(tab.Pos + o).decode() if (o := tab.Offset({field_offset})) != 0 else None,"
+                )
+            else:
+                inst_lines.append(
+                    f"        tab.String(tab.Pos + tab.Offset({field_offset})).decode(),"
+                )
             field_offset += 2
         elif fname in byte_fields:
             inst_lines.append(
@@ -136,44 +130,20 @@ def make_from_fb_fn(
             if is_optional:
                 line = f"{line} if _{fname}_offset != 0 else None"
             inst_lines.append(f"{line},")
-        elif fname in seq_table_fields:
-            _, type, is_optional = seq_table_fields[fname]
-            tn = type.__name__
-            globs[tn] = type
-            for_ = f"for i in range(fb_instance.{norm_field_name}Length())"
-            line = f"        tuple({tn}.{from_fb}(fb_instance.{norm_field_name}(i)) {for_})"
-            if is_optional:
-                # We need the field offset since the Python bindings hide them.
-                offset = _get_table_list_offset(cl, fname)
-                # We adjust the previous line a little
-                line = (
-                    f"{line} if int(fb_instance._tab.Offset({offset})) != 0 else None"
-                )
-            lines.append(f"{line},")
         elif fname in lists_of_strings_names:
-            is_optional = lists_of_strings_names[fname]
-            for_ = f"for i in range(fb_instance.{norm_field_name}Length())"
-            line = f"        [fb_instance.{norm_field_name}(i).decode('utf8') {for_}]"
-            if is_optional:
-                offset = _get_table_list_offset(cl, fname)
-                # We adjust the previous line a little
-                line = (
-                    f"{line} if int(fb_instance._tab.Offset({offset})) != 0 else None"
-                )
-            lines.append(f"{line},")
-        elif fname in seqs_of_strings_names:
-            is_optional = seqs_of_strings_names[fname]
-            for_ = f"for i in range(fb_instance.{norm_field_name}Length())"
-            line = (
-                f"        tuple(fb_instance.{norm_field_name}(i).decode('utf8') {for_})"
+            list_def = lists_of_strings_names[fname]
+            is_optional = list_def[2]
+            slot_idx = list_def[1]
+            lines.append(f"    _{fname}_offset = tab.Offset({4 + slot_idx * 2})")
+            lines.append(
+                f"    _{fname}_vector = tab.Vector(_{fname}_offset) if _{fname}_offset != 0 else None"
             )
+            for_ = f"for i in range(tab.VectorLen(_{fname}_offset))"
+            line = f"        [tab.String(_{fname}_vector + i * 4).decode() {for_}]"
             if is_optional:
-                offset = _get_table_list_offset(cl, fname)
                 # We adjust the previous line a little
-                line = (
-                    f"{line} if int(fb_instance._tab.Offset({offset})) != 0 else None"
-                )
-            lines.append(f"{line},")
+                line = f"{line} if _{fname}_offset != 0 else None"
+            inst_lines.append(f"{line},")
         elif fname in inline_names:
             inline = inline_names[fname]
             globs[f"_{fname}_type"] = SCALAR_TYPE_TO_PYTHON[inline[1]]
@@ -190,35 +160,33 @@ def make_from_fb_fn(
         elif fname in union_field_names:
             # We prepare a dictionary to select the proper class at runtime.
             # Then we just grab the proper type and instantiate it.
-            _, union_types, union_enum = union_field_names[fname]
+            _, union_types, union_mapping, slot_idx = union_field_names[fname]
             dn = f"_{fname}_union_dict"
             union_resolution_dict = {}
-            stripped_union_dict: dict[str, Any] = {
-                k.split("_")[-1]: v for k, v in union_enum.__dict__.items()
-            }
 
-            for union_type in [u for u in union_types if u is not none_type]:
+            for ix, union_type in union_mapping.items():
                 # Unions might be prefixed by a namespace string, depending on how
                 # they're defined.
-                code = stripped_union_dict[union_type.__name__]
-                fb_cls = union_type.__fb_class__
                 attr_model = union_type
 
-                def _load_from_content(table, attr_model=attr_model, fb_cls=fb_cls):
-                    res = fb_cls()
-                    res.Init(table.Bytes, table.Pos)
-                    return attr_model.__fb_from_fb__(res)
+                def _load_from_content(table: Table, o, attr_model=attr_model):
+                    obj = Table(bytearray(), 0)
+                    table.Union(obj, o)
+                    return attr_model.__fb_from_fb__(obj)
 
-                union_resolution_dict[code] = _load_from_content
-
-            if none_type in union_types:
-                none_code = getattr(union_enum, "NONE")
-                union_resolution_dict[none_code] = lambda _: None
+                union_resolution_dict[ix] = _load_from_content
 
             globs[dn] = union_resolution_dict
-            lines.append(
-                f"        {dn}[fb_instance.{norm_field_name}Type()](fb_instance.{norm_field_name}()),"
-            )
+            globs[f"_{fname}_flags"] = Uint8Flags
+            lines.append(f"    _{fname}_offset = tab.Offset({4 + slot_idx * 2})")
+            if none_type in union_types:
+                inst_lines.append(
+                    f"        {dn}[tab.Get(_{fname}_flags, _{fname}_offset + tab.Pos)](tab, tab.Offset({6 + slot_idx * 2})) if _{fname}_offset != 0 else None,"
+                )
+            else:
+                inst_lines.append(
+                    f"        {dn}[tab.Get(_{fname}_flags, _{fname}_offset + tab.Pos) if _{fname}_offset != 0 else None](tab, tab.Offset({6 + slot_idx * 2})),"
+                )
         elif fname in lists_of_scalar_names:
             list_def = lists_of_scalar_names[fname]
             flags = SCALAR_TYPES_TO_FLAGS[list_def[3]]
@@ -236,17 +204,6 @@ def make_from_fb_fn(
                 line = f"{line} if _{fname}_offset != 0 else None"
             inst_lines.append(line + ", ")
             field_offset += 2
-        elif fname in seqs_of_scalar_names:
-            for_ = f"for i in range(fb_instance.{norm_field_name}Length())"
-            lines.append(f"        tuple(fb_instance.{norm_field_name}(i) {for_}),")
-        elif fname in seqs_of_enum_names:
-            enum_type = seqs_of_enum_names[fname][1]
-            dn = f"_{fname}_enum"
-            globs[dn] = enum_type
-            for_ = f"for i in range(fb_instance.{norm_field_name}Length())"
-            lines.append(
-                f"        tuple({dn}(fb_instance.{norm_field_name}(i)) {for_}),"
-            )
         else:
             raise ValueError(f"Can't handle {fname} (type {field.type}).")
 
@@ -256,7 +213,6 @@ def make_from_fb_fn(
     sha1.update(name.encode("utf-8"))
     unique_filename = "<FB from_fb for %s, %s>" % (name, sha1.hexdigest())
     script = "\n".join(lines + inst_lines)
-    print(script)
     eval(compile(script, unique_filename, "exec"), globs)
 
     linecache.cache[unique_filename] = (

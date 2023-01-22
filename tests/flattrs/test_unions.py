@@ -1,5 +1,5 @@
 from hypothesis import given
-from hypothesis.strategies import booleans, composite, text
+from hypothesis.strategies import DrawFn, booleans, composite, text
 
 from flattr import model_from_bytes, model_to_bytes
 
@@ -9,18 +9,18 @@ from .test_common import common1s
 
 
 @composite
-def unions_of_nested_tables(draw):
+def unions_of_nested_tables(draw: DrawFn) -> UnionOfNestedTables:
     if draw(booleans()):
-        inner = draw(common1s())
+        inner = draw(common1s)
     else:
         inner = NestedJustAString(draw(text()))
     return UnionOfNestedTables(inner)
 
 
 @composite
-def unions_of_optional_tables(draw):
+def unions_of_optional_tables(draw: DrawFn) -> UnionOfOptionalTables:
     if draw(booleans()):
-        inner = draw(common1s())
+        inner = draw(common1s)
     else:
         if draw(booleans()):
             inner = NestedJustAString(draw(text()))
