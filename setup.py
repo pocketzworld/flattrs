@@ -25,6 +25,7 @@ setup(
             "coverage",
             "tox==4.0.11",
             "cattrs",
+            "nox",
         ]
     },
     package_data={"": ["*.pxd", "*.pyx", "py.typed"]},
