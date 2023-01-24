@@ -1,7 +1,7 @@
 """Functionality for the `flatc` backend."""
 import hashlib
 import linecache
-from enum import Enum, ReprEnum
+from enum import Enum
 from re import sub
 from typing import Any, Callable, Final, List, Tuple, Type
 
@@ -273,7 +273,7 @@ def get_scalar_types(cl, mod) -> list[tuple[FieldName, ScalarType, MaybeDefault]
     scalars = []
     for field in fields(cl):
         if field.type in (bool, float, int) or (
-            is_subclass(field.type, ReprEnum) and is_subclass(field.type, int)
+            is_subclass(field.type, Enum) and is_subclass(field.type, int)
         ):
             scalar_type, default = _get_scalar_type(mod, field.name)
             scalars.append((field.name, scalar_type, default))
