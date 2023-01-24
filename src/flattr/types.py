@@ -1,12 +1,17 @@
-from enum import IntEnum, ReprEnum
+from enum import IntEnum
 from typing import TypeAlias
+
+try:
+    from enum import ReprEnum as Enum
+except ImportError:
+    from enum import Enum
 
 
 class Uint8(int):
     """An 8-bit Flatbuffer unsigned int."""
 
 
-class Uint8Enum(Uint8, ReprEnum):
+class Uint8Enum(Uint8, Enum):
     """An 8-bit Flatbuffer enum."""
 
 
@@ -17,7 +22,7 @@ class Uint16(int):
     """A 16-bit Flatbuffer unsigned int."""
 
 
-class Uint16Enum(Uint16, ReprEnum):
+class Uint16Enum(Uint16, Enum):
     """A 16-bit Flatbuffer enum."""
 
 
@@ -25,7 +30,7 @@ class Uint32(int):
     """A 32-bit Flatbuffer unsigned int."""
 
 
-class Uint32Enum(Uint32, ReprEnum):
+class Uint32Enum(Uint32, Enum):
     """A 32-bit Flatbuffer enum."""
 
 
@@ -33,7 +38,7 @@ class Uint64(int):
     """A 64-bit Flatbuffer unsigned int."""
 
 
-class Uint64Enum(Uint64, ReprEnum):
+class Uint64Enum(Uint64, Enum):
     """A 64-bit Flatbuffer enum."""
 
 
@@ -41,7 +46,7 @@ class Int8(int):
     """An 8-bit Flatbuffer signed int."""
 
 
-class Int8Enum(Int8, ReprEnum):
+class Int8Enum(Int8, Enum):
     """An 8-bit Flatbuffer signed enum."""
 
 
@@ -52,7 +57,7 @@ class Int16(int):
     """A 16-bit Flatbuffer signed int."""
 
 
-class Int16Enum(Int16, ReprEnum):
+class Int16Enum(Int16, Enum):
     """A 16-bit Flatbuffer signed enum."""
 
 
@@ -60,7 +65,7 @@ class Int32(int):
     """A 32-bit Flatbuffer signed int."""
 
 
-class Int32Enum(Int32, ReprEnum):
+class Int32Enum(Int32, Enum):
     """A 32-bit Flatbuffer signed enum."""
 
 
