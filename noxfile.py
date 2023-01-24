@@ -15,14 +15,14 @@ def _cov(session: nox.Session) -> None:
         session.notify("coverage_report")
 
 
-@nox.session(python=["3.9", "3.11"], tags=["tests"])
+@nox.session(python=["3.10", "3.11"], tags=["tests"])
 def tests_cov(session: nox.Session) -> None:
     session.install(".[dev]")
 
     _cov(session)
 
 
-@nox.session(python=["3.9", "3.10", "3.11"], tags=["tests"])
+@nox.session(python=["3.10", "3.11"], tags=["tests"])
 def tests(session: nox.Session) -> None:
     session.install(".[dev]")
 
