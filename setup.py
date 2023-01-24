@@ -11,8 +11,9 @@ else:
 
 setup(
     name="flattrs",
+    long_description="Flatbuffers support for Python",
     version="0.1.16",
-    install_requires=["attrs", "flatbuffers==23.1.4", "numpy"],
+    install_requires=["attrs", "flatbuffers==23.1.4"],
     packages=find_packages(where="src"),
     package_dir={"": "src"},
     ext_modules=ext_modules,
