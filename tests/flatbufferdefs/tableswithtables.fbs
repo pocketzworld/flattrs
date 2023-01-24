@@ -8,6 +8,7 @@ table ContainsTable {
 }
 
 union CommonUnion { Common1, AllScalars }
+union NumberedUnion { AllScalars, Common1 = 100, AllScalarsWithDefaults }
 
 table UnionOfTables {
     innerUnion: CommonUnion (required);
@@ -21,6 +22,10 @@ table UnionOfNestedTables {
 
 table UnionOfOptionalTables {
     innerUnion: CommonUnion (required);
+}
+
+table NumberedUnionTable {
+    innerUnion: NumberedUnion;
 }
 
 table OptionalTable {

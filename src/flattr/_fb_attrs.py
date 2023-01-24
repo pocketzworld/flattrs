@@ -17,6 +17,7 @@ from ._flatc import (
     get_num_slots_from_flatc_module,
     get_scalar_list_types,
     get_scalar_types,
+    get_union_mapping_overrides,
 )
 from ._flatc import make_from_bytes_fn as flatc_make_from_bytes_fn
 from ._flatc import make_from_fb_fn as flatc_make_from_fb_fn
@@ -42,8 +43,10 @@ from .types import (
     Uint16,
     Uint32,
     Uint64,
+    UnionVal,
 )
 from .typing import (
+    get_annotation_and_base,
     get_optional_arg,
     get_union_args,
     is_annotated_with,
@@ -69,9 +72,6 @@ def __dataclass_transform__(
     ),
 ) -> Callable[[_T], _T]:
     return lambda c: c
-
-
-UNION_CL = "__fb_union_cl"
 
 
 @__dataclass_transform__()
@@ -104,6 +104,7 @@ def Flatbuffer(fb_cl, frozen: bool = False, repr: bool = True):
         num_slots = get_num_slots_from_flatc_module(res.__fb_module__)
         scalars = get_scalar_types(res, res.__fb_module__)
         scalar_list_overrides = get_scalar_list_types(res)
+        union_overrides = get_union_mapping_overrides(res)
         _make_fb_functions(
             res,
             num_slots=num_slots,
@@ -111,6 +112,7 @@ def Flatbuffer(fb_cl, frozen: bool = False, repr: bool = True):
             make_from_fb_fn=flatc_make_from_fb_fn,
             field_overrides=scalars,
             scalar_list_overrides=scalar_list_overrides,
+            union_overrides=union_overrides,
         )
 
         return res
@@ -174,6 +176,7 @@ def _make_fb_functions(
     make_from_fb_fn: Callable,
     field_overrides: list[tuple[FieldName, ScalarType, MaybeDefault]] = [],
     scalar_list_overrides: list[tuple[FieldName, ScalarType]] = [],
+    union_overrides: dict[FieldName, UnionMapping] = {},
 ) -> None:
     """Inspect the given class for any non-nestable buffers.
 
@@ -282,14 +285,14 @@ def _make_fb_functions(
                         )
                     )
                     next_slot_idx += 1
-            elif issubclass(o, Enum):
-                raise ValueError("Flatbuffers don't support optional enums.")
         elif u := get_union_args(ftype):
             unions.append(
                 (
                     field.name,
                     u,
-                    {ix: t for ix, t in enumerate(u, start=1)},
+                    union_overrides[field.name]
+                    if field.name in union_overrides
+                    else _make_union_mapping(u),
                     next_slot_idx,
                 )
             )
@@ -431,6 +434,23 @@ def model_to_bytes(inst, builder: Optional[Builder] = None) -> bytes:
 def model_from_bytes(cl: type[_T], payload: bytes) -> _T:
     """Deserialize an instance of `cl` from the given payload."""
     return cl.__fb_from_bytes__(payload)
+
+
+def _make_union_mapping(union_types: tuple[type, ...]) -> UnionMapping:
+    res = {}
+
+    curr_ix = 1
+    for t in union_types:
+        if t is none_type:
+            continue
+        if union_val_and_base := get_annotation_and_base(t, UnionVal):
+            union_val, base = union_val_and_base
+            curr_ix = union_val
+            t = base
+        res[curr_ix] = t
+        curr_ix += 1
+
+    return res
 
 
 class FBItemType(str, Enum):

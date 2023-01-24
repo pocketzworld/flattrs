@@ -20,7 +20,7 @@ from flatbuffers.number_types import (
     Uint64Flags,
 )
 
-from ._consts import HELPER_TYPE_TO_SCALAR_TYPE
+from ._consts import HELPER_TYPE_TO_SCALAR_TYPE, UNION_CL
 from ._types import (
     FieldName,
     MaybeDefault,
@@ -30,7 +30,7 @@ from ._types import (
     SlotNumber,
     UnionMapping,
 )
-from .typing import get_list_args, is_subclass
+from .typing import get_list_args, get_union_args, is_subclass
 
 none_type = type(None)
 
@@ -173,8 +173,6 @@ def make_from_fb_fn(
                 if union_type is none_type:
                     union_resolution_dict[0] = lambda _: None
                     continue
-                # Unions might be prefixed by a namespace string, depending on how
-                # they're defined.
                 fb_cls = union_type.__fb_class__
                 attr_model = union_type
 
@@ -388,6 +386,28 @@ def _get_num_slots(fn) -> int:
     d = DummyBuilder()
     fn(d)
     return d.slot_num
+
+
+def get_union_mapping_overrides(cl) -> dict[FieldName, UnionMapping]:
+    """Fish out the flatc union mapping."""
+    res = {}
+    for field in fields(cl):
+        if UNION_CL in field.metadata:
+            union_args = get_union_args(field.type)
+            union_dict = {a.__name__: a for a in union_args}
+            flatc_mapping = field.metadata[UNION_CL]
+            mapping = {}
+            for k, v in flatc_mapping.__dict__.items():
+                if not isinstance(v, int):
+                    continue
+                if v == 0:
+                    mapping[0] = none_type
+                    continue
+                # Unions may be prefixed by their namespace.
+                k = k.split("_")[-1]
+                mapping[v] = union_dict[k]
+            res[field.name] = mapping
+    return res
 
 
 FLAGS_TO_SCALAR_TYPE: Final[dict[type, ScalarType]] = {

@@ -74,3 +74,9 @@ class Float(float):
 
 Float32: TypeAlias = Float
 Float64: TypeAlias = float
+
+
+class UnionVal(int):
+    """Annotate a union member with this to set the union type value."""
+
+    pass

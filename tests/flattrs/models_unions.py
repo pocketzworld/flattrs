@@ -1,8 +1,8 @@
-from typing import Union
+from typing import Annotated, Union
 
-from flattr import flattrs
+from flattr import UnionVal, flattrs
 
-from .models_common import Common1
+from .models_common import AllScalars, AllScalarsWithDefaults, Common1
 from .models_nested import NestedJustAString
 
 
@@ -14,3 +14,10 @@ class UnionOfNestedTables:
 @flattrs
 class UnionOfOptionalTables:
     innerUnion: Union[None, Common1, NestedJustAString]
+
+
+@flattrs
+class NumberedUnionTable:
+    innerUnion: Union[
+        None, AllScalars, Annotated[Common1, UnionVal(100)], AllScalarsWithDefaults
+    ]

@@ -1,9 +1,10 @@
 from types import GenericAlias, UnionType
-from typing import Any, Union, _AnnotatedAlias, _GenericAlias, get_args
+from typing import Any, TypeVar, Union, _AnnotatedAlias, _GenericAlias, get_args
 
 from ._types import Optionality
 
 none_type = type(None)
+T = TypeVar("T")
 
 
 def is_subclass(typ, supertype) -> bool:
@@ -24,6 +25,15 @@ def is_annotated_with(typ, annotation) -> bool:
     return typ.__class__ is _AnnotatedAlias and annotation in get_args(typ)
 
 
+def get_annotation_and_base(typ, annotation_cls: type[T]) -> tuple[T, Any] | None:
+    if typ.__class__ is _AnnotatedAlias:
+        args = get_args(typ)
+        for arg in args[1:]:
+            if isinstance(arg, annotation_cls):
+                return arg, args[0]
+    return None
+
+
 def get_optional_arg(type) -> Any | None:
     """Is this annotation an `Optional` (union of something and None)?"""
     if getattr(type, "__origin__", None) is Union or type.__class__ is UnionType:
@@ -34,7 +44,7 @@ def get_optional_arg(type) -> Any | None:
     return None
 
 
-def get_union_args(type) -> Any | None:
+def get_union_args(type) -> tuple[type, ...] | None:
     """Is this annotation a Union?"""
     if getattr(type, "__origin__", None) is Union or type.__class__ is UnionType:
         return type.__args__
