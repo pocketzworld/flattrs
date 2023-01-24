@@ -1,9 +1,12 @@
-.. image:: https://travis-ci.org/Tinche/flattrs.svg?branch=main
-   :target: https://travis-ci.org/Tinche/flattrs
-   :alt: CI Status
+.. image:: https://img.shields.io/github/license/pocketzworld/flattrs?style=flat-square
+   :alt: MIT
 
 Changelog:
 ----------
+23.1.0 (UNRELEASED)
+~~~~~~~~~~~~~~~~~~~
+* Drop Python 3.9 support.
+
 0.1.16 (2023-01-19)
 ~~~~~~~~~~~~~~~~~~~
 * Update the underlying `flatbuffers` dependency.
