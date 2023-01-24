@@ -1,0 +1,112 @@
+---
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+env:
+  FORCE_COLOR: "1" # Make tools pretty.
+  PIP_DISABLE_PIP_VERSION_CHECK: "1"
+  PIP_NO_PYTHON_VERSION_WARNING: "1"
+  SETUPTOOLS_SCM_PRETEND_VERSION: "1.0" # avoid warnings about shallow checkout
+  PYTHON_LATEST: "3.11"
+
+permissions:
+  contents: read
+
+jobs:
+  tests:
+    name: Tests on ${{ matrix.python-version }}
+    runs-on: ubuntu-latest
+
+    strategy:
+      matrix:
+        python-version:
+          - "3.9"
+          - "3.10"
+          - "3.11"
+
+    steps:
+      - uses: actions/checkout@v3
+      - uses: actions/setup-python@v4
+        with:
+          python-version: ${{ matrix.python-version }}
+      - run: python -m pip install --upgrade wheel nox
+
+      - name: Determine Python version for Nox
+        run: |
+          V=${{ matrix.python-version }}
+          if [[ "$V" = ~* ]]; then
+            # Extract version from a '~3.XX.0-0' specifier.
+            V=${V:1:4}
+          fi
+
+          echo NOX_PYTHON=$V >>$GITHUB_ENV
+
+      - run: python -Im nox --python ${{ env.NOX_PYTHON }} --tags tests
+
+      - name: Upload coverage data
+        uses: actions/upload-artifact@v3
+        with:
+          name: coverage-data
+          path: .coverage.*
+          if-no-files-found: ignore
+
+  coverage:
+    name: Combine & check coverage
+    runs-on: ubuntu-latest
+    needs: tests
+
+    steps:
+      - uses: actions/checkout@v3
+      - uses: actions/setup-python@v4
+        with:
+          # Use latest Python, so it understands all syntax.
+          python-version: ${{env.PYTHON_LATEST}}
+
+      - run: python -m pip install --upgrade coverage[toml]
+
+      - uses: actions/download-artifact@v3
+        with:
+          name: coverage-data
+
+      - name: Combine coverage & fail if it's <100%.
+        run: |
+          python -m coverage combine
+          python -m coverage html --skip-covered --skip-empty
+
+          # Report and write to summary.
+          python -m coverage report | sed 's/^/    /' >> $GITHUB_STEP_SUMMARY
+
+          # Report again and fail if under 100%.
+          python -m coverage report --fail-under=100
+
+      - name: Upload HTML report if check failed.
+        uses: actions/upload-artifact@v3
+        with:
+          name: html-report
+          path: htmlcov
+        if: ${{ failure() }}
+
+  package:
+    name: Build & verify package
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Harden Runner
+        uses: step-security/harden-runner@v2
+        with:
+          egress-policy: block
+          allowed-endpoints: >
+            files.pythonhosted.org:443
+            github.com:443
+            pypi.org:443
+
+      - uses: actions/checkout@v3
+        with:
+          fetch-depth: 0 # get correct version
+      - uses: hynek/build-and-inspect-python-package@v1
