@@ -22,13 +22,6 @@ def tests_cov(session: nox.Session) -> None:
     _cov(session)
 
 
-@nox.session(python=["3.10", "3.11"], tags=["tests"])
-def tests(session: nox.Session) -> None:
-    session.install(".[dev]")
-
-    session.run("pytest", *session.posargs)
-
-
 @nox.session
 def coverage_report(session: nox.Session) -> None:
     session.install("coverage[toml]")
