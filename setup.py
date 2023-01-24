@@ -28,6 +28,7 @@ setup(
             "tox==4.0.11",
             "cattrs",
             "nox",
+            "numpy",
         ]
     },
     package_data={"": ["*.pxd", "*.pyx", "py.typed"]},
