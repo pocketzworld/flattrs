@@ -1,17 +1,6 @@
 """Test serialization and deserialization of common tables."""
-from struct import pack, unpack
-
 from hypothesis import given
-from hypothesis.strategies import (
-    binary,
-    composite,
-    floats,
-    just,
-    lists,
-    none,
-    sampled_from,
-    text,
-)
+from hypothesis.strategies import binary, just, none, sampled_from, text
 
 from flattr import model_from_bytes, model_to_bytes
 

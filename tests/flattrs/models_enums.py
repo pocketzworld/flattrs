@@ -1,5 +1,3 @@
-from enum import IntEnum
-
 from flattr import flattrs
 from flattr.types import (
     ByteEnum,

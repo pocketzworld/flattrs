@@ -1,5 +1,4 @@
-from flattr import flattrs
-from flattr.types import (
+from flattr import (
     Float32,
     Int8,
     Int16,
@@ -9,6 +8,7 @@ from flattr.types import (
     Uint16,
     Uint32,
     Uint64,
+    flattrs,
 )
 
 

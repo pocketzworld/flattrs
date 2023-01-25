@@ -1,5 +1,5 @@
 from hypothesis import given
-from hypothesis.strategies import DrawFn, booleans, composite
+from hypothesis.strategies import DrawFn, composite
 
 from flattr import model_from_bytes, model_to_bytes
 
