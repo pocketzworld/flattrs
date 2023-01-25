@@ -6,7 +6,20 @@ from ._fb_attrs import from_package as _from_package
 from ._fb_attrs import from_package_enum as _from_package_enum
 from ._fb_attrs import model_from_bytes as model_from_bytes
 from ._fb_attrs import model_to_bytes as model_to_bytes
-from .types import UnionVal
+from .types import (
+    Float,
+    Float32,
+    Float64,
+    Int8,
+    Int16,
+    Int32,
+    Int64,
+    Uint8,
+    Uint16,
+    Uint32,
+    Uint64,
+    UnionVal,
+)
 
 Flatbuffer = _Flatbuffer
 FlatbufferEnum = _FlatbufferEnum
@@ -20,4 +33,15 @@ __all__ = [
     "from_package_enum",
     "flattrs",
     "UnionVal",
+    "Uint8",
+    "Uint16",
+    "Uint32",
+    "Uint64",
+    "Int8",
+    "Int16",
+    "Int32",
+    "Int64",
+    "Float",
+    "Float32",
+    "Float64",
 ]

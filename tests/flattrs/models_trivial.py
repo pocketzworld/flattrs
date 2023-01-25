@@ -1,7 +1,6 @@
 from typing import Annotated
 
-from flattr import flattrs
-from flattr.types import Float
+from flattr import Float, flattrs
 
 from .models_enums import ASimpleByteEnum
 

@@ -1,5 +1,4 @@
-from flattr import flattrs
-from flattr.types import (
+from flattr import (
     Float32,
     Float64,
     Int8,
@@ -10,6 +9,7 @@ from flattr.types import (
     Uint16,
     Uint32,
     Uint64,
+    flattrs,
 )
 
 from .models_common import Common1
