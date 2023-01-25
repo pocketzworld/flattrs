@@ -8,3 +8,15 @@ force_grid_wrap = 0
 use_parentheses = true
 ensure_newline_before_comments = true
 line_length = 88
+
+[tool.coverage.run]
+parallel = true
+branch = true
+source = ["flattr"]
+
+[tool.coverage.paths]
+source = ["src", ".nox/tests*/**/site-packages"]
+
+[tool.coverage.report]
+show_missing = true
+skip_covered = true
