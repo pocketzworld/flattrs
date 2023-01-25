@@ -3,7 +3,7 @@ import linecache
 from enum import Enum, IntEnum, unique
 from importlib import import_module
 from sys import modules
-from typing import Any, Callable, Final, Optional, Set, TypeVar, Union
+from typing import Any, Callable, Final, Set, TypeVar, Union
 
 import attr
 from attrs import NOTHING, define, fields, has
@@ -184,8 +184,7 @@ def _make_fb_functions(
     """
     fn_name = "__fb_nonnestables__"
     strings: list[tuple[FieldName, SlotNumber, Optionality]] = []
-    byte_fields = []
-    optional_bytes = []
+    byte_fields: list[tuple[FieldName, SlotNumber, Optionality]] = []
     tables: list[tuple[FieldName, type, SlotNumber, Optionality]] = []
     lists_of_tables: list[tuple[FieldName, type, SlotNumber, Optionality]] = []
     lists_of_strings: list[tuple[FieldName, SlotNumber, Optionality]] = []
@@ -220,7 +219,7 @@ def _make_fb_functions(
             strings.append((field.name, next_slot_idx, False))
             next_slot_idx += 1
         elif ftype is bytes:
-            byte_fields.append((field.name, next_slot_idx))
+            byte_fields.append((field.name, next_slot_idx, False))
             next_slot_idx += 1
         elif has(ftype):
             tables.append((field.name, field.type, next_slot_idx, False))
@@ -231,7 +230,7 @@ def _make_fb_functions(
                 strings.append((field.name, next_slot_idx, True))
                 next_slot_idx += 1
             elif o is bytes:
-                optional_bytes.append((field.name, next_slot_idx))
+                byte_fields.append((field.name, next_slot_idx, True))
                 next_slot_idx += 1
             elif has(o):
                 tables.append((field.name, o, next_slot_idx, True))
@@ -383,7 +382,6 @@ def _make_fb_functions(
             num_slots,
             strings,
             byte_fields,
-            optional_bytes,
             tables,
             lists_of_tables,
             lists_of_strings,
@@ -400,8 +398,7 @@ def _make_fb_functions(
         make_from_fb_fn(
             cl,
             strings,
-            [s[0] for s in byte_fields],
-            [s[0] for s in optional_bytes],
+            byte_fields,
             enums,
             tables,
             lists_of_tables,
@@ -414,7 +411,7 @@ def _make_fb_functions(
     )
 
 
-def model_to_bytes(inst, builder: Optional[Builder] = None) -> bytes:
+def model_to_bytes(inst, builder: Builder | None = None) -> bytes:
     builder = Builder(10000) if builder is None else builder
     fb_items = inst.__fb_nonnestables__()
     string_offsets = {}
@@ -519,8 +516,7 @@ def _make_add_to_builder_fn(
     cl,
     num_slots: int,
     string_fields: list[tuple[FieldName, SlotNumber, Optionality]],
-    byte_fields: list[tuple[FieldName, SlotNumber]],
-    optional_bytes: list[tuple[FieldName, SlotNumber]],
+    byte_fields: list[tuple[FieldName, SlotNumber, Optionality]],
     table_fields: list[tuple[FieldName, type, SlotNumber, Optionality]],
     lists_of_tables: list[tuple[FieldName, type, SlotNumber, Optionality]],
     lists_of_strings: list[tuple[FieldName, SlotNumber, Optionality]],
@@ -548,18 +544,12 @@ def _make_add_to_builder_fn(
             f"        strs[__fb_self_{field}] = builder.CreateString(__fb_self_{field})"
         )
 
-    for field, slot_idx in byte_fields:
+    for field, slot_idx, is_optional in byte_fields:
         lines.append(f"    __fb_self_{field} = self.{field}")
-        lines.append(f"    if id(__fb_self_{field}) not in nodes:")
-        lines.append(
-            f"        nodes[id(__fb_self_{field})] = builder.CreateByteVector(__fb_self_{field})"
-        )
-
-    for field, slot_idx in optional_bytes:
-        lines.append(f"    __fb_self_{field} = self.{field}")
-        lines.append(
-            f"    if __fb_self_{field} is not None and id(__fb_self_{field}) not in nodes:"
-        )
+        infix = ""
+        if is_optional:
+            infix = f"__fb_self_{field} is not None and "
+        lines.append(f"    if {infix}id(__fb_self_{field}) not in nodes:")
         lines.append(
             f"        nodes[id(__fb_self_{field})] = builder.CreateByteVector(__fb_self_{field})"
         )
@@ -626,15 +616,12 @@ def _make_add_to_builder_fn(
             f"    {indent}builder.PrependUOffsetTRelativeSlot({slot_idx}, strs[__fb_self_{field}], 0)"
         )
 
-    for field, slot_idx in byte_fields:
+    for field, slot_idx, is_optional in byte_fields:
+        prefix = ""
+        if is_optional:
+            prefix = f"if __fb_self_{field} is not None: "
         lines.append(
-            f"    builder.PrependUOffsetTRelativeSlot({slot_idx}, nodes[id(__fb_self_{field})], 0)"
-        )
-
-    for field, slot_idx in optional_bytes:
-        lines.append(f"    if __fb_self_{field} is not None:")
-        lines.append(
-            f"        builder.PrependUOffsetTRelativeSlot({slot_idx}, nodes[id(__fb_self_{field})], 0)"
+            f"    {prefix}builder.PrependUOffsetTRelativeSlot({slot_idx}, nodes[id(__fb_self_{field})], 0)"
         )
 
     for field, slot_idx, is_optional in lists_of_strings:

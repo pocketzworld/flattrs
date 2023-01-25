@@ -1,6 +1,6 @@
 import hashlib
 import linecache
-from typing import Any, Callable, Final
+from typing import Callable, Final
 
 from attrs import NOTHING, fields
 from flatbuffers.number_types import (
@@ -35,11 +35,10 @@ none_type = type(None)
 def make_from_fb_fn(
     cl,
     string_fields: list[tuple[FieldName, SlotNumber, Optionality]],
-    byte_fields: list[str],
-    optional_bytes: list[str],
+    byte_fields: list[tuple[FieldName, SlotNumber, Optionality]],
     enum_fields: list[tuple[FieldName, ScalarType, SlotNumber, MaybeDefault]],
     table_fields: list[tuple[FieldName, type, SlotNumber, Optionality]],
-    lists_of_tables: list[tuple[str, type, bool]],
+    lists_of_tables: list[tuple[FieldName, type, Optionality]],
     lists_of_strings: list[tuple[FieldName, SlotNumber, Optionality]],
     union_fields: list[tuple[FieldName, tuple[type, ...], UnionMapping, SlotNumber]],
     inlines: list[tuple[FieldName, ScalarType, SlotNumber, MaybeDefault]],
@@ -58,6 +57,7 @@ def make_from_fb_fn(
     globs = {"_Table": Table}
     lines = []
     inst_lines = []  # Instantiation lines
+    byte_names = {f[0]: f for f in byte_fields}
     string_names = {s[0]: s for s in string_fields}
     list_table_fields = {t[0]: t for t in lists_of_tables}
     union_field_names = {t[0]: t for t in union_fields}
@@ -86,15 +86,16 @@ def make_from_fb_fn(
                     f"        tab.String(tab.Pos + tab.Offset({field_offset})).decode(),"
                 )
             field_offset += 2
-        elif fname in byte_fields:
-            inst_lines.append(
-                f"        tab.String(tab.Pos + tab.Offset({field_offset})),"
-            )
-            field_offset += 2
-        elif fname in optional_bytes:
-            inst_lines.append(
-                f"        tab.String(tab.Pos + o) if (o := tab.Offset({field_offset})) != 0 else None,"
-            )
+        elif fname in byte_names:
+            byte_def = byte_names[fname]
+            if byte_def[2]:
+                inst_lines.append(
+                    f"        tab.String(tab.Pos + o) if (o := tab.Offset({field_offset})) != 0 else None,"
+                )
+            else:
+                inst_lines.append(
+                    f"        tab.String(tab.Pos + tab.Offset({field_offset})),"
+                )
             field_offset += 2
         elif fname in enum_names:
             _, fb_type, slot_idx, default = enum_names[fname]

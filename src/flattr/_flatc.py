@@ -65,8 +65,7 @@ def make_from_bytes_fn(cl) -> Callable:
 def make_from_fb_fn(
     cl,
     string_fields: list[tuple[FieldName, SlotNumber, Optionality]],
-    byte_fields: List[str],
-    optional_bytes: List[str],
+    byte_fields: list[tuple[str, SlotNumber, Optionality]],
     enum_fields: list[tuple[str, str, int]],
     table_fields: list[tuple[FieldName, type, SlotNumber, Optionality]],
     lists_of_tables: list[tuple[FieldName, type, SlotNumber, Optionality]],
@@ -82,6 +81,7 @@ def make_from_fb_fn(
     name = cl.__fb_class__.__name__
     globs = {}
     lines = []
+    byte_names = {f[0]: f for f in byte_fields}
     string_names = {s[0]: s for s in string_fields}
     list_table_fields = {t[0]: t for t in lists_of_tables}
     union_field_names = {t[0]: t for t in union_fields}
@@ -97,9 +97,10 @@ def make_from_fb_fn(
     from_fb = "__fb_from_fb__"
     lines.append("@classmethod")
     lines.append("def __fb_from_fb__(cls, fb_instance):")
-    for fname in optional_bytes:
-        norm_field_name = _normalize_fn(fname)
-        lines.append(f"    __fb_{fname} = fb_instance.{norm_field_name}AsNumpy()")
+    for fname, _, is_optional in byte_fields:
+        if is_optional:
+            norm_field_name = _normalize_fn(fname)
+            lines.append(f"    __fb_{fname} = fb_instance.{norm_field_name}AsNumpy()")
     lines.append("    return cls(")
     for field in fields(cl):
         fname = field.name
@@ -112,13 +113,16 @@ def make_from_fb_fn(
                 )
             else:
                 lines.append(f"        fb_instance.{norm_field_name}().decode('utf8'),")
-
-        elif fname in byte_fields:
-            lines.append(f"        fb_instance.{norm_field_name}AsNumpy().tobytes(),")
-        elif fname in optional_bytes:
-            lines.append(
-                f"        __fb_{fname}.tobytes() if not isinstance(__fb_{fname}, int) else None,"
-            )
+        elif fname in byte_names:
+            byte_def = byte_names[fname]
+            if byte_def[2]:
+                lines.append(
+                    f"        __fb_{fname}.tobytes() if not isinstance(__fb_{fname}, int) else None,"
+                )
+            else:
+                lines.append(
+                    f"        fb_instance.{norm_field_name}AsNumpy().tobytes(),"
+                )
         elif fname in enum_names:
             enum_name = field.type.__name__
             globs[enum_name] = field.type
