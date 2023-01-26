@@ -20,4 +20,16 @@ def test_unsupported_enums() -> None:
 
         @flattrs
         class Test:
+            test: TestEnum | None
+
+    with raises(TypeError):
+
+        @flattrs
+        class Test:
             test: list[TestEnum]
+
+    with raises(TypeError):
+
+        @flattrs
+        class Test:
+            test: list[TestEnum] | None
