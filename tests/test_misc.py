@@ -15,3 +15,9 @@ def test_unsupported_enums() -> None:
         @flattrs
         class Test:
             test: TestEnum
+
+    with raises(TypeError):
+
+        @flattrs
+        class Test:
+            test: list[TestEnum]

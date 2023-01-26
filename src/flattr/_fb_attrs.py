@@ -327,6 +327,8 @@ def _make_fb_functions(
                     )
                 )
                 next_slot_idx += 1
+            else:
+                raise TypeError(f"Cannot handle {field.name} {ftype}")
         elif is_annotated_with(ftype, Float):
             inlines.append((field.name, "Float32", next_slot_idx, field.default))
             next_slot_idx += 1
