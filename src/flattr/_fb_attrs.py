@@ -3,7 +3,7 @@ import linecache
 from enum import Enum, IntEnum, unique
 from importlib import import_module
 from sys import modules
-from typing import Any, Callable, Final, Set, TypeVar, Union
+from typing import Any, Callable, Final, TypeVar
 
 import attr
 from attrs import NOTHING, define, fields, has
@@ -67,7 +67,7 @@ def __dataclass_transform__(
     eq_default: bool = True,
     order_default: bool = False,
     kw_only_default: bool = False,
-    field_descriptors: tuple[Union[type, Callable[..., Any]], ...] = (
+    field_descriptors: tuple[type | Callable[..., Any], ...] = (
         (attr.attrib, attr.field)
     ),
 ) -> Callable[[_T], _T]:
@@ -178,11 +178,7 @@ def _make_fb_functions(
     scalar_list_overrides: list[tuple[FieldName, ScalarType]] = [],
     union_overrides: dict[FieldName, UnionMapping] = {},
 ) -> None:
-    """Inspect the given class for any non-nestable buffers.
-
-    Non-nestables are other tables, strings and lists of non-nestables.
-    """
-    fn_name = "__fb_nonnestables__"
+    """Generate all necessary functions for a class to work with Flatbuffers."""
     strings: list[tuple[FieldName, SlotNumber, Optionality]] = []
     byte_fields: list[tuple[FieldName, SlotNumber, Optionality]] = []
     tables: list[tuple[FieldName, type, SlotNumber, Optionality]] = []
@@ -362,17 +358,7 @@ def _make_fb_functions(
             )
             next_slot_idx += 1
         else:
-            raise Exception(f"Cannot handle {ftype}")
-
-    setattr(
-        cl,
-        fn_name,
-        _make_nonnestables_fn(
-            cl,
-            tables,
-            unions,
-        ),
-    )
+            raise TypeError(f"Cannot handle {ftype}")
 
     setattr(
         cl,
@@ -413,17 +399,11 @@ def _make_fb_functions(
 
 def model_to_bytes(inst, builder: Builder | None = None) -> bytes:
     builder = Builder(10000) if builder is None else builder
-    fb_items = inst.__fb_nonnestables__()
     string_offsets = {}
     node_offsets = {}
 
-    for fb_item, fb_type, fb_vec_start in fb_items:
-        item_id = id(fb_item)
-        if item_id not in node_offsets:
-            offset = fb_item.__fb_add_to_builder__(
-                builder, string_offsets, node_offsets
-            )
-            node_offsets[item_id] = offset
+    offset = inst.__fb_add_to_builder__(builder, string_offsets, node_offsets)
+
     builder.Finish(offset)  # Last offset.
     return bytes(builder.Output())
 
@@ -434,6 +414,7 @@ def model_from_bytes(cl: type[_T], payload: bytes) -> _T:
 
 
 def _make_union_mapping(union_types: tuple[type, ...]) -> UnionMapping:
+    """Create a mapping of values to union members for use by the structuring logic."""
     res = {}
 
     curr_ix = 1
@@ -455,61 +436,6 @@ class FBItemType(str, Enum):
 
 
 FBItem = tuple[Any, FBItemType, Callable]
-
-
-def _make_nonnestables_fn(
-    cl,
-    table_fields: list[FieldName, type, SlotNumber, Optionality],
-    unions: list[tuple[FieldName, tuple[type, ...], type, SlotNumber]],
-) -> Callable[[], tuple[Set[str], list[bytes], list[FBItem]]]:
-    name = cl.__name__
-    globs = {"FBTable": FBItemType.TABLE}
-    lines = []
-    lines.append("def __fb_nonnestables__(self):")
-
-    lines.append("    fb_items = []")
-
-    for table_field, _, _, is_optional in table_fields:
-        indent = ""
-        if is_optional:
-            lines.append(f"    if self.{table_field} is not None:")
-            indent = "    "
-        lines.append(
-            f"    {indent}{table_field}_items = self.{table_field}.__fb_nonnestables__()"
-        )
-        lines.append(f"    {indent}fb_items.extend({table_field}_items)")
-
-    for table_field, union_classes, _, _ in unions:
-        if none_type not in union_classes:
-            lines.append(
-                f"    {table_field}_items = self.{table_field}.__fb_nonnestables__()"
-            )
-            lines.append(f"    fb_items.extend({table_field}_items)")
-        else:
-            lines.append(f"    if self.{table_field} is not None:")
-            lines.append(
-                f"        {table_field}_items = self.{table_field}.__fb_nonnestables__()"
-            )
-            lines.append(f"        fb_items.extend({table_field}_items)")
-
-    lines.append("    fb_items.append((self, FBTable, None))")
-
-    lines.append("    return fb_items")
-
-    sha1 = hashlib.sha1()
-    sha1.update(name.encode("utf-8"))
-    unique_filename = "<FB nonnestables for %s, %s>" % (name, sha1.hexdigest())
-    script = "\n".join(lines)
-    eval(compile(script, unique_filename, "exec"), globs)
-
-    linecache.cache[unique_filename] = (
-        len(script),
-        None,
-        script.splitlines(True),
-        unique_filename,
-    )
-
-    return globs["__fb_nonnestables__"]
 
 
 def _make_add_to_builder_fn(
@@ -605,6 +531,24 @@ def _make_add_to_builder_fn(
         )
         lines.append(f"    {indent}nodes[id(__fb_self_{field})] = builder.EndVector()")
 
+    for field, _, _, is_optional in table_fields:
+        prefix = ""
+        if is_optional:
+            prefix = f"if self.{field} is not None: "
+        lines.append(
+            f"    {prefix}nodes[id(self.{field})] = self.{field}.__fb_add_to_builder__(builder, strs, nodes)"
+        )
+
+    for field, union_members, _, _ in unions:
+        prefix = ""
+        is_optional = none_type in union_members
+        if is_optional:
+            prefix = f"if self.{field} is not None: "
+        lines.append(
+            f"    {prefix}nodes[id(self.{field})] = self.{field}.__fb_add_to_builder__(builder, strs, nodes)"
+        )
+
+    # The actual object starts here.
     lines.append(f"    builder.StartObject({num_slots})")
 
     for field, slot_idx, is_optional in string_fields:
@@ -718,9 +662,7 @@ def _guess_num_slots(cl) -> int:
 
     Each attribute is one slot, unions being two.
     """
-    return len(fields(cl)) + sum(
-        getattr(a.type, "__origin__", None) is Union for a in fields(cl)
-    )
+    return len(fields(cl)) + sum(get_union_args(a.type) is not None for a in fields(cl))
 
 
 SCALAR_TYPE_TO_PREPEND: Final[dict[ScalarType, str]] = {
