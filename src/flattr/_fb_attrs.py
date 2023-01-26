@@ -268,8 +268,6 @@ def _make_fb_functions(
                     for helper_type, scalar_type in HELPER_TYPE_TO_SCALAR_TYPE.items():
                         if helper_type in arg.__mro__:
                             break
-                    else:
-                        raise TypeError(f"Cannot handle enum {arg}")
                     lists_of_enums.append(
                         (
                             field.name,
@@ -280,6 +278,10 @@ def _make_fb_functions(
                         )
                     )
                     next_slot_idx += 1
+                else:
+                    raise TypeError(f"Cannot handle {field.name} {ftype}")
+            else:
+                raise TypeError(f"Cannot handle {field.name} {ftype}")
         elif u := get_union_args(ftype):
             unions.append(
                 (
@@ -315,8 +317,6 @@ def _make_fb_functions(
                 for helper_type, scalar_type in HELPER_TYPE_TO_SCALAR_TYPE.items():
                     if helper_type in arg.__mro__:
                         break
-                else:
-                    raise TypeError(f"Cannot handle enum {arg}")
                 lists_of_enums.append(
                     (
                         field.name,
@@ -338,8 +338,6 @@ def _make_fb_functions(
             for helper_type, scalar_type in HELPER_TYPE_TO_SCALAR_TYPE.items():
                 if helper_type in ftype.__mro__:
                     break
-            else:
-                raise TypeError(f"Cannot handle enum {ftype}")
             enums.append(
                 (
                     field.name,
