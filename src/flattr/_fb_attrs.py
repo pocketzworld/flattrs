@@ -213,32 +213,24 @@ def _make_fb_functions(
         ftype = field.type
         if ftype is str:
             strings.append((field.name, next_slot_idx, False))
-            next_slot_idx += 1
         elif ftype is bytes:
             byte_fields.append((field.name, next_slot_idx, False))
-            next_slot_idx += 1
         elif has(ftype):
             tables.append((field.name, field.type, next_slot_idx, False))
-            next_slot_idx += 1
         elif o := get_optional_arg(ftype):
             # This is an optional field.
             if o is str:
                 strings.append((field.name, next_slot_idx, True))
-                next_slot_idx += 1
             elif o is bytes:
                 byte_fields.append((field.name, next_slot_idx, True))
-                next_slot_idx += 1
             elif has(o):
                 tables.append((field.name, o, next_slot_idx, True))
-                next_slot_idx += 1
             elif is_generic_subclass(o, list):
                 arg = o.__args__[0]
                 if arg is str:
                     lists_of_strings.append((field.name, next_slot_idx, True))
-                    next_slot_idx += 1
                 elif has(arg):
                     lists_of_tables.append((field.name, arg, next_slot_idx, True))
-                    next_slot_idx += 1
                 elif arg in (
                     bool,
                     Uint8,
@@ -263,7 +255,6 @@ def _make_fb_functions(
                             True,
                         )
                     )
-                    next_slot_idx += 1
                 elif issubclass(arg, Enum) and issubclass(arg, int):
                     for helper_type, scalar_type in HELPER_TYPE_TO_SCALAR_TYPE.items():
                         if helper_type in arg.__mro__:
@@ -277,7 +268,6 @@ def _make_fb_functions(
                             True,
                         )
                     )
-                    next_slot_idx += 1
                 else:
                     raise TypeError(f"Cannot handle {field.name} {ftype}")
             else:
@@ -293,15 +283,13 @@ def _make_fb_functions(
                     next_slot_idx,
                 )
             )
-            next_slot_idx += 2
+            next_slot_idx += 1
         elif is_generic_subclass(ftype, list):
             arg = ftype.__args__[0]
             if arg is str:
                 lists_of_strings.append((field.name, next_slot_idx, False))
-                next_slot_idx += 1
             elif has(arg):
                 lists_of_tables.append((field.name, arg, next_slot_idx, False))
-                next_slot_idx += 1
             elif arg in HELPER_TYPE_TO_SCALAR_TYPE:
                 lists_of_scalars.append(
                     (
@@ -312,7 +300,6 @@ def _make_fb_functions(
                         False,
                     )
                 )
-                next_slot_idx += 1
             elif issubclass(arg, Enum) and issubclass(arg, int):
                 for helper_type, scalar_type in HELPER_TYPE_TO_SCALAR_TYPE.items():
                     if helper_type in arg.__mro__:
@@ -326,12 +313,10 @@ def _make_fb_functions(
                         False,
                     )
                 )
-                next_slot_idx += 1
             else:
                 raise TypeError(f"Cannot handle {field.name} {ftype}")
         elif is_annotated_with(ftype, Float):
             inlines.append((field.name, "Float32", next_slot_idx, field.default))
-            next_slot_idx += 1
         elif is_subclass(ftype, Enum) and is_subclass(
             ftype, int
         ):  # Enums before scalars, since IntEnum is a subclass of int.
@@ -346,7 +331,6 @@ def _make_fb_functions(
                     field.default if field.default is not NOTHING else list(ftype)[0],
                 )
             )
-            next_slot_idx += 1
         elif is_subclass(ftype, (bool, Float, Float64, Uint8, Uint64, Int32, Int64)):
             inlines.append(
                 (
@@ -356,9 +340,10 @@ def _make_fb_functions(
                     field.default,
                 )
             )
-            next_slot_idx += 1
         else:
             raise TypeError(f"Cannot handle {ftype}")
+
+        next_slot_idx += 1
 
     setattr(
         cl,
