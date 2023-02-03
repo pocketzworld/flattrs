@@ -11,7 +11,7 @@ table JustAnOptionalString {
 }
 
 table JustBytes {
-    value: [uint8];
+    value: [uint8] (required);
 }
 
 table JustOptionalBytes {
@@ -27,7 +27,7 @@ table JustADouble {
 }
 
 table JustAnEnum {
-    value: flattrs_test.ASimpleByteEnum;
+    value: ASimpleByteEnum;
 }
 
 table HasCaps {

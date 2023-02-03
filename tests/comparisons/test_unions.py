@@ -7,8 +7,8 @@ from flattr import model_from_bytes, model_to_bytes
 
 from ..flatc import models_unions as models_unions_flatc
 from ..flatc.test_unions import numbered_union_tables, unions_of_nested_tables
-from ..flattrs import models_common as models_common_flattrs
 from ..flattrs import models_unions as models_unions_flattrs
+from ..flattrs.models import common as models_common_flattrs
 
 
 @given(

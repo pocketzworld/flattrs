@@ -1,8 +1,14 @@
 WHEEL_DOCKER_IMAGE := quay.io/pypa/manylinux_2_28_x86_64
 
-fbs:
+flatc:
 	flatc --python tests/flatbufferdefs/*/*.fbs
 	flatc --python tests/flatbufferdefs/*.fbs
+
+flattrs:
+	rm -rf tests/flattrs/models &&\
+	python -m flattr.modgen tests/flatbufferdefs tests/flattrs/models &&\
+	isort tests/flattrs/models &&\
+	black tests/flattrs/models
 
 coverage:
 	coverage run --source=flattr -m pytest

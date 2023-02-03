@@ -70,7 +70,7 @@ table SeqVectorOfCommon1 {
 }
 
 table ByteArrayTable {
-    contents: [ubyte];
+    contents: [ubyte] (required);
 }
 
 table OptionalByteArrayTable {

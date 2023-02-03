@@ -34,3 +34,5 @@ table AllScalarsWithDefaults {
     float32: float = 1.0;
     float64: double = 1.0;
 }
+
+root_type Common1;

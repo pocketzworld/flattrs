@@ -1,6 +1,9 @@
 from types import GenericAlias, UnionType
 from typing import Any, TypeVar, Union, _AnnotatedAlias, _GenericAlias, get_args
 
+from attr._make import _obj_setattr
+from attrs import fields
+
 from ._types import Optionality
 
 none_type = type(None)
@@ -62,3 +65,28 @@ def get_list_args(type) -> tuple[Any, Optionality] | None:
         arg = get_args(type)[0]
         return arg, optional
     return None
+
+
+def resolve_types(cls, globalns=None, localns=None, attribs=None, include_extras=True):
+    # Since calling get_type_hints is expensive we cache whether we've
+    # done it already.
+    if getattr(cls, "__attrs_types_resolved__", None) != cls:
+        import typing
+
+        kwargs = {
+            "globalns": globalns,
+            "localns": localns,
+            "include_extras": include_extras,
+        }
+
+        hints = typing.get_type_hints(cls, **kwargs)
+        for field in fields(cls) if attribs is None else attribs:
+            if field.name in hints:
+                # Since fields have been frozen we must work around it.
+                _obj_setattr(field, "type", hints[field.name])
+        # We store the class we resolved so that subclasses know they haven't
+        # been resolved.
+        cls.__attrs_types_resolved__ = cls
+
+    # Return the class so you can use it as a decorator too.
+    return cls
