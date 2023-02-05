@@ -1,11 +1,14 @@
+from enum import Enum as PythonEnum
 from pathlib import Path
+from traceback import print_exception
 from typing import Final, TypeAlias
 
-from attrs import define
+from attrs import define, evolve
 from lark import ParseTree, Token, Tree
 from lark.visitors import Interpreter
 from rich import print
 
+from .._types import Optionality
 from .parser import parser
 
 Imports: TypeAlias = dict[str, set[str]]
@@ -15,35 +18,87 @@ MISSING: Final = "$MISSING"
 
 
 @define
+class Table:
+    @define
+    class Field:
+        name: str
+        type: str
+        default: str
+        is_optional: Optionality
+
+    name: ImportableName
+    field_defs: list[Field]
+
+    def adjust_enums(self, enums: set[str]) -> None:
+        """Table fields that are enums must not be optional."""
+        self.field_defs = [
+            f if f.type not in enums else evolve(f, is_optional=False)
+            for f in self.field_defs
+        ]
+
+    def render(self) -> Script:
+        lines = [
+            "@flattrs",
+            f"class {self.name}:",
+            *[
+                f"    {f.name}: {f.type}{' | None' if f.is_optional else ''}{f.default}"
+                for f in self.field_defs
+            ],
+        ]
+        return lines
+
+
+@define
+class Enum:
+    name: str
+    type: type[PythonEnum]
+    fields: list[str]
+
+    def render(self) -> Script:
+        lines = [f"class {self.name}({self.type}):", *self.fields]
+        return lines
+
+
+@define
 class ParsedModule:
-    namespace: str
+    namespace: str | None
     filename: Path
     imports: Imports
-    importables: list[tuple[ImportableName, Script]]
+    importables: list[tuple[ImportableName, Script | Table | Enum]]
 
     def render(self) -> str:
         script = (
-            "from __future__ import annotations\n"
+            "from __future__ import annotations\n\n"
             + "\n".join(
-                f"from {source} import {', '.join(targets)}"
+                f"from {source} import {', '.join(sorted(targets))}"
                 for source, targets in self.imports.items()
             )
             + "\n"
-            + "\n".join(line for item in self.importables for line in item[1])
         )
+        for item in self.importables:
+            if isinstance(item[1], Table):
+                script += "\n".join(item[1].render())
+            elif isinstance(item[1], Enum):
+                script += "\n".join(item[1].render())
+            else:
+                script += "\n".join(item[1])
+            script += "\n\n\n"
         return script
 
 
 class FlatbufferRenderer(Interpreter):
     """Transform FlatBuffer code into Python code.
 
-    The rendering needs to be done in two phases, since imports
-    need to be resolved after the initial parsing pass.
+    The rendering needs to be done in several phases, since imports
+    need to be resolved after the initial parsing pass and types
+    may need to be adjusted based on the actual types.
     """
 
     def module(self, tree: ParseTree, filename: Path) -> ParsedModule:
-        namespace = str(next(tree.find_data("namespace")).children[0])
-        importables: list[tuple[ImportableName, list[str], Imports]] = [
+        namespace = None
+        for t in tree.find_data("namespace"):
+            namespace = str(t.children[0])
+        importables: list[tuple[ImportableName, Script | Table | Enum, Imports]] = [
             self.visit(t)
             for t in tree.find_pred(lambda t: t.data in ("table", "enum", "union"))
         ]
@@ -52,8 +107,8 @@ class FlatbufferRenderer(Interpreter):
 
         local_names = {i[0] for i in importables}
 
-        for name, script, imps in importables:
-            lines.append((name, script))
+        for name, script_or_table, imps in importables:
+            lines.append((name, script_or_table))
             for k, v in imps.items():
                 if k == MISSING:
                     for val in v:
@@ -70,13 +125,30 @@ class FlatbufferRenderer(Interpreter):
     def namespace(self, _: ParseTree) -> tuple[list[str], Imports]:
         return [], {}
 
-    def union(self, tree: ParseTree) -> tuple[ImportableName, list[str], Imports]:
+    def union(self, tree: ParseTree) -> tuple[ImportableName, Script, Imports]:
         name = str(tree.children[0])
-        members = [str(c.children[0]).split(".")[-1] for c in tree.children[1:]]
-        member_string = " | ".join(members)
-        return name, [f"{name} = {member_string}"], {MISSING: set(members)}
+        member_names = []
+        to_resolve = set()
+        imports = {}
+        for member in tree.children[1:]:
+            member_name = str(member.children[0]).split(".")[-1]
+            to_resolve.add(member_name)
+            if len(member.children) > 1:
+                # This has a union tag attached.
+                imports["typing"] = {"Annotated"}
+                imports["flattr"] = {"UnionVal"}
+                member_name = (
+                    f"Annotated[{member_name}, UnionVal({str(member.children[1])})]"
+                )
+            member_names.append(member_name)
+        member_string = " | ".join(member_names)
+        return (
+            name,
+            [f"{name} = {member_string}"],
+            {MISSING: to_resolve} | imports,
+        )
 
-    def enum(self, tree: ParseTree) -> tuple[ImportableName, list[str], Imports]:
+    def enum(self, tree: ParseTree) -> tuple[ImportableName, Enum, Imports]:
         enum_name = str(tree.children[0])
         type = ENUM_TYPE_MAP[tree.children[1]]
         if type == "IntEnum":
@@ -93,7 +165,7 @@ class FlatbufferRenderer(Interpreter):
             else:
                 next_val = val + 1
             fields.append(f"    {name} = {val}")
-        return enum_name, [f"class {enum_name}({type}):", *fields], imports
+        return enum_name, Enum(enum_name, type, fields), imports
 
     def enum_field(self, tree: ParseTree) -> tuple[str, int | None]:
         val = None
@@ -101,17 +173,22 @@ class FlatbufferRenderer(Interpreter):
             val = int(enum_val.children[0])
         return tree.children[0], val
 
-    def table(self, tree: ParseTree) -> tuple[ImportableName, list[str], Imports]:
+    def table(self, tree: ParseTree) -> tuple[ImportableName, Table, Imports]:
         name = str(tree.children[0])
-        field_defs = [self.visit(c) for c in tree.children[1:]]
-        lines = ["@flattrs", f"class {name}:", *[f"    {f[0]}" for f in field_defs]]
+        field_defs = [self.table_field(c) for c in tree.children[1:]]
         imports = {"flattr": {"flattrs"}}
-        for _, field_imports in field_defs:
+        for _, _, _, _, field_imports in field_defs:
             imports = merge_imports(imports, field_imports)
 
-        return name, lines, imports
+        return (
+            name,
+            Table(name, [Table.Field(f[0], f[1], f[2], f[3]) for f in field_defs]),
+            imports,
+        )
 
-    def table_field(self, tree: ParseTree) -> tuple[str, Imports]:
+    def table_field(
+        self, tree: ParseTree
+    ) -> tuple[str, str, str, Optionality, Imports]:
         imports = {}
         name = tree.children[0]
         type = tree.children[1]
@@ -122,17 +199,12 @@ class FlatbufferRenderer(Interpreter):
                 break
         is_scalar = False
         if type == "string":
-            if is_required:
-                type = "str"
-            else:
-                type = "str | None"
+            type = "str"
             default = ""
         elif isinstance(type, Token):
             # This is a name, so probably a table field.
             default = ""
             imports.setdefault(MISSING, []).append(str(type))
-            if not is_required:
-                type = f"{type} | None"
         else:
             if type.data == "vector_type":
                 inner_type = type.children[0]
@@ -146,13 +218,12 @@ class FlatbufferRenderer(Interpreter):
                     else:
                         imports.setdefault(MISSING, []).append(str(inner_type))
                     type = f"list[{inner_type}]"
-                if not is_required:
-                    type = f"{type} | None"
                 default = ""
             elif type.data == "string":
                 pass
             else:
                 # A scalar.
+                is_required = True
                 type = type.children[0]
                 if type.lower() in TYPE_MAP:
                     is_scalar = True
@@ -170,7 +241,7 @@ class FlatbufferRenderer(Interpreter):
                         def_val = f"{type}.{def_val}"
                     default = f" = {def_val}"
 
-        return f"{name}: {type}{default}", imports
+        return name, type, default, not is_required, imports
 
     def table_field_default(self):
         pass
@@ -186,21 +257,33 @@ def render_directory(input: Path, output: Path) -> None:
     # First we parse, then we resolve imports, then we write.
     per_namespace: dict[str, list[ParsedModule]] = {}
     importables_to_module: dict[str, ParsedModule] = {}
+    enums = set()
+    tables = []
     for file in input.rglob("*.fbs"):
         rel_path = file.relative_to(input).with_suffix(".py")
-        pm = parse_module(parser.parse(file.read_text()), rel_path)
-        for importable, _ in pm.importables:
-            importables_to_module[importable] = pm
+        try:
+            pm = parse_module(parser.parse(file.read_text()), rel_path)
+        except Exception as exc:
+            print(f"While parsing {file}: {exc}")
+            print_exception(exc)
+        for name, importable in pm.importables:
+            importables_to_module[name] = pm
+            if isinstance(importable, Enum):
+                enums.add(importable.name)
+            elif isinstance(importable, Table):
+                tables.append(importable)
         per_namespace.setdefault(pm.namespace, []).append(pm)
 
-    # Now we need to fill in the missing imports.
+    # At this point, we know which importables are enums.
+    # Tables referencing those need to have their types adjusted.
+    for table in tables:
+        table.adjust_enums(enums)
 
     # Now we write the modules to disk.
     output.mkdir(exist_ok=True, parents=True)
     (output / "__init__.py").write_text("")
     for pm_list in per_namespace.values():
         for pm in pm_list:
-            print(pm)
             missing_imports = pm.imports.pop(MISSING, set())
             for m in missing_imports:
                 module = importables_to_module[m]
@@ -211,13 +294,14 @@ def render_directory(input: Path, output: Path) -> None:
                     fname = full_rel_path.stem
                     rel_path = f".{str(full_rel_path.parent).replace('/', '.')}.{fname}"
                 pm.imports.setdefault(str(rel_path), set()).add(m)
-            # try:
-            target_file = output / pm.filename
-            target_file.parent.mkdir(exist_ok=True, parents=True)
-            (target_file.parent / "__init__.py").write_text("")
-            target_file.write_text(pm.render())
-            # except Exception as exc:
-            #    print(f"While parsing or rendering {file}: {exc}")
+            try:
+                target_file = output / pm.filename
+                target_file.parent.mkdir(exist_ok=True, parents=True)
+                (target_file.parent / "__init__.py").write_text("")
+                target_file.write_text(pm.render())
+            except Exception as exc:
+                print(f"While parsing or rendering {file}: {exc}")
+                print_exception(exc)
 
 
 def render(input: Path, output: Path) -> None:

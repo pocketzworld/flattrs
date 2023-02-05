@@ -2,10 +2,13 @@ include "enums.fbs";
 
 namespace flattrs_test;
 
+// A comment that should be ignored.
 table JustAString {
     id: string (required);
 }
 
+/* Multiline
+   comment */
 table JustAnOptionalString {
     id: string;
 }

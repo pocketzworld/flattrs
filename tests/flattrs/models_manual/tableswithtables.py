@@ -14,6 +14,8 @@ class ContainsTable:
 
 
 CommonUnion = Common1 | AllScalars
+
+
 NumberedUnion = AllScalars | Annotated[Common1, UnionVal(100)] | AllScalarsWithDefaults
 
 

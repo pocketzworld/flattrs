@@ -15,9 +15,10 @@ enum AnUInt8Enum: uint8 {
     SIX,
 }
 
+// No trailing comma on purpose
 enum AnInt8Enum: int8 {
     SEVEN = -127,
-    EIGHT,
+    EIGHT
 }
 
 enum AnUInt16Enum: uint16 {

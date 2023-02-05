@@ -12,6 +12,9 @@ DECIMAL_POSITIVE_INTEGER: "1".."9" DIGIT*
 LETTER: UCASE_LETTER | LCASE_LETTER
 WORD: LETTER+
 
+COMMENT: "//" /.*/ "\n"
+         | "/*" /(.|\n|\r)+/ "*/"
+
 NAMESPACE_NAME: LETTER (LETTER | "_" | ".")*
 FILEPATH: LETTER (LETTER | "_" | "." | "/")* ".fbs"
 
@@ -21,8 +24,8 @@ NAMESPACED_NAME: LETTER (LETTER | DIGIT | "_" | "." )* (LETTER | DIGIT)+
 root_type: "root_type" NAME ";"
 include: "include \"" FILEPATH "\"" ";"
 
-enum: "enum" NAME ":" TYPE_INTS "{" enum_field* "}"
-enum_field: NAME enum_field_default? ","
+enum: "enum" NAME ":" TYPE_INTS "{" [ enum_field ("," enum_field)*] ","? "}"
+enum_field: NAME enum_field_default?
 enum_field_default: "=" NUMBER
 
 table: "table" NAME "{" table_field* "}"
@@ -41,11 +44,12 @@ STRING_TYPE: "string"
 scalar_type: TYPE_BOOL | TYPE_INTS | FLOAT_TYPES
 vector_type: "[" NAME "]"
 
-module: include* namespace (table | enum | union)* root_type?
+module: include* namespace? (table | enum | union)* root_type?
 
 %import common.SIGNED_NUMBER -> NUMBER
 %import common.WS
 %ignore WS
+%ignore COMMENT
 """,
     start="module",
 )
