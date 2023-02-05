@@ -33,7 +33,7 @@ table_field: NAME ":" (scalar_type | vector_type | NAMESPACED_NAME) table_field_
 table_field_default: "=" (WORD | NUMBER)
 table_field_attributes: "(" [WORD ("," WORD)*] ")"
 
-union: "union" NAME "{" [union_member (", " union_member)*] "}"
+union: "union" NAME "{" [union_member ("," union_member ","?)*] "}"
 union_member: NAMESPACED_NAME ("=" DECIMAL_POSITIVE_INTEGER)?
 
 TYPE_BOOL: "bool"

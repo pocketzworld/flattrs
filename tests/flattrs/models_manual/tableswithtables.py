@@ -27,6 +27,9 @@ class UnionOfTables:
 NestedUnion = Common1 | NestedJustAString
 
 
+NestedUnion2 = Common1 | NestedJustAString
+
+
 @flattrs
 class UnionOfNestedTables:
     innerUnion: NestedUnion

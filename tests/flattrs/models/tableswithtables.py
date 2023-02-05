@@ -14,6 +14,8 @@ class ContainsTable:
 
 
 CommonUnion = Common1 | AllScalars
+
+
 NumberedUnion = AllScalars | Annotated[Common1, UnionVal(100)] | AllScalarsWithDefaults
 
 
@@ -23,6 +25,9 @@ class UnionOfTables:
 
 
 NestedUnion = Common1 | NestedJustAString
+
+
+NestedUnion2 = Common1 | NestedJustAString
 
 
 @flattrs
@@ -43,3 +48,8 @@ class NumberedUnionTable:
 @flattrs
 class OptionalTable:
     inner: Common1 | None
+
+
+@flattrs
+class ContainsNamespaced:
+    inside: NestedJustAString

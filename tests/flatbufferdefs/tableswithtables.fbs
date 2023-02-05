@@ -20,6 +20,12 @@ union NestedUnion {
     nested.NestedJustAString
 }
 
+// Trailing comma.
+union NestedUnion2 {
+    Common1,
+    nested.NestedJustAString,
+}
+
 table UnionOfNestedTables {
     innerUnion: NestedUnion (required);
 }
