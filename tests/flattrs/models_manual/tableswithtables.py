@@ -45,3 +45,8 @@ class NumberedUnionTable:
 @flattrs
 class OptionalTable:
     inner: Common1 | None
+
+
+@flattrs
+class ContainsNamespaced:
+    inside: NestedJustAString

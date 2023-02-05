@@ -6,7 +6,6 @@ from typing import Final, TypeAlias
 from attrs import define, evolve
 from lark import ParseTree, Token, Tree
 from lark.visitors import Interpreter
-from rich import print
 
 from .._types import Optionality
 from .parser import parser
@@ -25,6 +24,7 @@ class Table:
         type: str
         default: str
         is_optional: Optionality
+        namespace_prefix: str | None = None
 
     name: ImportableName
     field_defs: list[Field]
@@ -177,37 +177,45 @@ class FlatbufferRenderer(Interpreter):
         name = str(tree.children[0])
         field_defs = [self.table_field(c) for c in tree.children[1:]]
         imports = {"flattr": {"flattrs"}}
-        for _, _, _, _, field_imports in field_defs:
+        for _, _, _, _, field_imports, _ in field_defs:
             imports = merge_imports(imports, field_imports)
 
         return (
             name,
-            Table(name, [Table.Field(f[0], f[1], f[2], f[3]) for f in field_defs]),
+            Table(
+                name,
+                [Table.Field(f[0], f[1], f[2], f[3], f[5] or None) for f in field_defs],
+            ),
             imports,
         )
 
     def table_field(
         self, tree: ParseTree
-    ) -> tuple[str, str, str, Optionality, Imports]:
+    ) -> tuple[str, str, str, Optionality, Imports, str]:
         imports = {}
         name = tree.children[0]
-        type = tree.children[1]
+        full_type = tree.children[1]
         is_required = False
         for attr_tree in tree.find_data("table_field_attributes"):
             if "required" in attr_tree.children:
                 is_required = True
                 break
+
         is_scalar = False
-        if type == "string":
+        namespace_prefix = ""
+        if full_type == "string":
             type = "str"
             default = ""
-        elif isinstance(type, Token):
+        elif isinstance(full_type, Token):
             # This is a name, so probably a table field.
             default = ""
+            namespace_prefix, type = (
+                full_type.rsplit(".", 1) if "." in full_type else ("", full_type)
+            )
             imports.setdefault(MISSING, []).append(str(type))
         else:
-            if type.data == "vector_type":
-                inner_type = type.children[0]
+            if full_type.data == "vector_type":
+                inner_type = full_type.children[0]
                 if inner_type.lower() in ("uint8", "ubyte"):
                     type = "bytes"
                 else:
@@ -216,15 +224,20 @@ class FlatbufferRenderer(Interpreter):
                         if inner_type not in ("int", "float", "bool", "str", "float"):
                             imports["flattr"] = {inner_type}
                     else:
+                        namespace_prefix, inner_type = (
+                            inner_type.rsplit(".", 1)
+                            if "." in inner_type
+                            else ("", inner_type)
+                        )
                         imports.setdefault(MISSING, []).append(str(inner_type))
                     type = f"list[{inner_type}]"
                 default = ""
-            elif type.data == "string":
+            elif full_type.data == "string":
                 pass
             else:
                 # A scalar.
                 is_required = True
-                type = type.children[0]
+                type = full_type.children[0]
                 if type.lower() in TYPE_MAP:
                     is_scalar = True
                     type = TYPE_MAP[type]
@@ -241,7 +254,7 @@ class FlatbufferRenderer(Interpreter):
                         def_val = f"{type}.{def_val}"
                     default = f" = {def_val}"
 
-        return name, type, default, not is_required, imports
+        return name, type, default, not is_required, imports, namespace_prefix
 
     def table_field_default(self):
         pass

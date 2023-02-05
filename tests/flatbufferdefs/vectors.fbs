@@ -62,11 +62,11 @@ table SeqVectorsOfScalars {
 }
 
 table VectorOfCommon1 {
-    vecOfCommon: [Common1] (required);
+    vecOfCommon: [flattrs_test.Common1] (required);
 }
 
 table SeqVectorOfCommon1 {
-    vecOfCommon: [Common1];
+    vecOfCommon: [flattrs_test.Common1];
 }
 
 table ByteArrayTable {
@@ -78,15 +78,15 @@ table OptionalByteArrayTable {
 }
 
 table VectorOfEnums {
-    enums: [ASimpleUByteEnum] (required);
+    enums: [flattrs_test.ASimpleUByteEnum] (required);
 }
 
 table OptVectorOfEnums {
-    enums: [ASimpleUByteEnum];
+    enums: [flattrs_test.ASimpleUByteEnum];
 }
 
 table SeqVectorOfEnums {
-    enums: [ASimpleUByteEnum];
+    enums: [flattrs_test.ASimpleUByteEnum];
 }
 
 table SeqVectorOfStrings {
@@ -106,9 +106,9 @@ table OptionalSeqVectorOfStrings {
 }
 
 table VectorOfOptionalCommon1 {
-    vecOfCommon: [Common1];
+    vecOfCommon: [flattrs_test.Common1];
 }
 
 table SeqVectorOfOptionalCommon1 {
-    vecOfCommon: [Common1];
+    vecOfCommon: [flattrs_test.Common1];
 }

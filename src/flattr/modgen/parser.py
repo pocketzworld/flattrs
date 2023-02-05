@@ -29,7 +29,7 @@ enum_field: NAME enum_field_default?
 enum_field_default: "=" NUMBER
 
 table: "table" NAME "{" table_field* "}"
-table_field: NAME ":" (scalar_type | vector_type | NAME) table_field_default? table_field_attributes? ";"
+table_field: NAME ":" (scalar_type | vector_type | NAMESPACED_NAME) table_field_default? table_field_attributes? ";"
 table_field_default: "=" (WORD | NUMBER)
 table_field_attributes: "(" [WORD ("," WORD)*] ")"
 
@@ -42,7 +42,7 @@ TYPE_INTS: "u"? "int" ("8"|"16"|"32"|"64")? | "ubyte" | "ushort" | "ulong"
 FLOAT_TYPES: "float" | "float32" | "double" | "float64"
 STRING_TYPE: "string"
 scalar_type: TYPE_BOOL | TYPE_INTS | FLOAT_TYPES
-vector_type: "[" NAME "]"
+vector_type: "[" NAMESPACED_NAME "]"
 
 module: include* namespace? (table | enum | union)* root_type?
 

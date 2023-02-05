@@ -66,13 +66,13 @@ class AnInt64Enum(IntEnum):
 
 @flattrs
 class AllEnums:
-    simple_ubyte: ASimpleUByteEnum | None
-    simple_byte: ASimpleByteEnum | None
-    uint8enum: AnUInt8Enum | None
-    int8enum: AnInt8Enum | None
-    uint16enum: AnUInt16Enum | None
-    int16enum: AnInt16Enum | None
-    uint32enum: AnUInt32Enum | None
-    int32enum: AnInt32Enum | None
-    uint64enum: AnUInt64Enum | None
-    int64enum: AnInt64Enum | None
+    simple_ubyte: ASimpleUByteEnum
+    simple_byte: ASimpleByteEnum
+    uint8enum: AnUInt8Enum
+    int8enum: AnInt8Enum
+    uint16enum: AnUInt16Enum
+    int16enum: AnInt16Enum
+    uint32enum: AnUInt32Enum
+    int32enum: AnInt32Enum
+    uint64enum: AnUInt64Enum
+    int64enum: AnInt64Enum

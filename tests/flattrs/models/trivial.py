@@ -37,7 +37,7 @@ class JustADouble:
 
 @flattrs
 class JustAnEnum:
-    value: ASimpleByteEnum | None
+    value: ASimpleByteEnum
 
 
 @flattrs
