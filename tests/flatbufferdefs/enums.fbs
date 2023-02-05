@@ -6,12 +6,12 @@ enum ASimpleUByteEnum: ubyte {
 }
 
 enum ASimpleByteEnum: byte {
-    THREE,
-    FOUR = -127,
+    THREE_,
+    FOUR_ = -127,
 }
 
 enum AnUInt8Enum: uint8 {
-    FIVE = 254,
+    FIVE_ = 254,
     SIX,
 }
 
@@ -54,7 +54,7 @@ enum AnInt64Enum: int64 {
 table AllEnums {
     simple_ubyte: ASimpleUByteEnum;
     simple_byte: ASimpleByteEnum;
-    uint8enum: AnUInt8Enum = FIVE;
+    uint8enum: AnUInt8Enum = FIVE_;
     int8enum: AnInt8Enum = SEVEN;
     uint16enum: AnUInt16Enum = NINE;
     int16enum: AnInt16Enum = ELEVEN;

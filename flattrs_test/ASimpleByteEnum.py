@@ -3,5 +3,5 @@
 # namespace: flattrs_test
 
 class ASimpleByteEnum(object):
-    FOUR = -127
-    THREE = 0
+    FOUR_ = -127
+    THREE_ = 0

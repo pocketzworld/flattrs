@@ -19,7 +19,7 @@ NAMESPACE_NAME: LETTER (LETTER | DIGIT | "_" | ".")*
 FILEPATH: (LETTER | DIGIT | "_" | "." | "/")+ ".fbs"
 
 NAME: LETTER (LETTER | DIGIT | "_" )*
-NAMESPACED_NAME: LETTER (LETTER | DIGIT | "_" | "." )* (LETTER | DIGIT)+
+NAMESPACED_NAME: LETTER (LETTER | DIGIT | "_" | "." )* (LETTER | DIGIT | "_")+
 
 root_type: "root_type" NAME ";"
 include: "include \"" FILEPATH "\"" ";"
@@ -30,7 +30,7 @@ enum_field_default: "=" NUMBER
 
 table: "table" NAME "{" table_field* "}"
 table_field: NAME ":" (scalar_type | vector_type | NAMESPACED_NAME) table_field_default? table_field_attributes? ";"
-table_field_default: "=" (WORD | NUMBER)
+table_field_default: "=" (NAMESPACED_NAME | NUMBER)
 table_field_attributes: "(" [WORD ("," WORD)*] ")"
 
 union: "union" NAME "{" [union_member ("," union_member ","?)*] "}"

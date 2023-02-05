@@ -25,7 +25,7 @@ from ..strats import (
     uint32s,
     uint64s,
 )
-from .models_enums import ASimpleUByteEnum
+from .models.enums import ASimpleUByteEnum
 from .models_vectors import (
     ByteArrayTable,
     OptionalByteArrayTable,

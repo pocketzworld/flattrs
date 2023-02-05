@@ -30,9 +30,19 @@ class Table:
     field_defs: list[Field]
 
     def adjust_enums(self, enums: set[str]) -> None:
-        """Table fields that are enums must not be optional."""
+        """
+        Table fields that are enums must not be optional.
+
+        Also, we adjust the default values for enums, if present.
+        """
         self.field_defs = [
-            f if f.type not in enums else evolve(f, is_optional=False)
+            f
+            if f.type not in enums
+            else evolve(
+                f,
+                is_optional=False,
+                default=f"{f.type}.{f.default}" if f.default else f.default,
+            )
             for f in self.field_defs
         ]
 
@@ -40,11 +50,15 @@ class Table:
         lines = [
             "@flattrs",
             f"class {self.name}:",
-            *[
-                f"    {f.name}: {f.type}{' | None' if f.is_optional else ''}{f.default}"
-                for f in self.field_defs
-            ],
         ]
+        for f in self.field_defs:
+            def_str = ""
+            if f.default:
+                def_str = f" = {f.default}"
+            line = (
+                f"    {f.name}: {f.type}{' | None' if f.is_optional else ''}{def_str}"
+            )
+            lines.append(line)
         return lines
 
 
@@ -213,6 +227,8 @@ class FlatbufferRenderer(Interpreter):
                 full_type.rsplit(".", 1) if "." in full_type else ("", full_type)
             )
             imports.setdefault(MISSING, []).append(str(type))
+            for def_child in tree.find_data("table_field_default"):
+                default = str(def_child.children[0])
         else:
             if full_type.data == "vector_type":
                 inner_type = full_type.children[0]
@@ -252,7 +268,7 @@ class FlatbufferRenderer(Interpreter):
                     elif not is_scalar:
                         # This has to be an enum
                         def_val = f"{type}.{def_val}"
-                    default = f" = {def_val}"
+                    default = def_val
 
         return name, type, default, not is_required, imports, namespace_prefix
 

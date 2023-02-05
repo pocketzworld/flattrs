@@ -5,19 +5,7 @@ from hypothesis.strategies import binary, just, none, sampled_from, text
 from flattr import model_from_bytes, model_to_bytes
 
 from ..strats import float32s, float64s
-from .models_enums import ASimpleByteEnum
-
-# from .models import (
-#     JustADouble,
-#     JustAFloat,
-#     JustAnEnum,
-#     JustAnOptionalString,
-#     JustAString,
-#     JustBytes,
-#     JustOptionalBytes,
-#     ListOfStrings,
-# )
-# from .models_enums import ASimpleByteEnum
+from .models.enums import ASimpleByteEnum
 from .models_trivial import (
     HasCaps,
     JustADouble,
@@ -28,16 +16,6 @@ from .models_trivial import (
     JustBytes,
     JustOptionalBytes,
 )
-
-# @composite
-# def just_an_optional_strings(draw):
-#     return JustAnOptionalString(draw(text() | none()))
-
-
-# @composite
-# def just_bytes(draw):
-#     return JustBytes(draw(binary()))
-
 
 # @composite
 # def just_optional_bytes(draw):

@@ -13,7 +13,7 @@ from flattr import (
 )
 
 from .models.common import Common1
-from .models_enums import ASimpleUByteEnum
+from .models.enums import ASimpleUByteEnum
 
 
 @flattrs

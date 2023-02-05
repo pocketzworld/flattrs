@@ -2,6 +2,7 @@
 
 # namespace: flattrs_test
 
-class AnUInt8Enum(object):
-    FIVE_ = 254
-    SIX = 255
+class NestedUnion2(object):
+    NONE = 0
+    Common1 = 1
+    nested_NestedJustAString = 2

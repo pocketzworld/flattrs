@@ -20,12 +20,12 @@ class ASimpleUByteEnum(Uint8Enum):
 
 
 class ASimpleByteEnum(Int8Enum):
-    THREE = 0
-    FOUR = -127
+    THREE_ = 0
+    FOUR_ = -127
 
 
 class AnUInt8Enum(Uint8Enum):
-    FIVE = 254
+    FIVE_ = 254
     SIX = 255
 
 
@@ -68,11 +68,11 @@ class AnInt64Enum(IntEnum):
 class AllEnums:
     simple_ubyte: ASimpleUByteEnum
     simple_byte: ASimpleByteEnum
-    uint8enum: AnUInt8Enum
-    int8enum: AnInt8Enum
-    uint16enum: AnUInt16Enum
-    int16enum: AnInt16Enum
-    uint32enum: AnUInt32Enum
-    int32enum: AnInt32Enum
-    uint64enum: AnUInt64Enum
-    int64enum: AnInt64Enum
+    uint8enum: AnUInt8Enum = AnUInt8Enum.FIVE_
+    int8enum: AnInt8Enum = AnInt8Enum.SEVEN
+    uint16enum: AnUInt16Enum = AnUInt16Enum.NINE
+    int16enum: AnInt16Enum = AnInt16Enum.ELEVEN
+    uint32enum: AnUInt32Enum = AnUInt32Enum.FOURTEEN
+    int32enum: AnInt32Enum = AnInt32Enum.SIXTEEN
+    uint64enum: AnUInt64Enum = AnUInt64Enum.SEVENTEEN
+    int64enum: AnInt64Enum = AnInt64Enum.NINETEEN
