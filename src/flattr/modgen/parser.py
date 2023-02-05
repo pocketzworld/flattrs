@@ -15,8 +15,8 @@ WORD: LETTER+
 COMMENT: "//" /.*/ "\n"
          | "/*" /(.|\n|\r)+/ "*/"
 
-NAMESPACE_NAME: LETTER (LETTER | "_" | ".")*
-FILEPATH: LETTER (LETTER | "_" | "." | "/")* ".fbs"
+NAMESPACE_NAME: LETTER (LETTER | DIGIT | "_" | ".")*
+FILEPATH: (LETTER | DIGIT | "_" | "." | "/")+ ".fbs"
 
 NAME: LETTER (LETTER | DIGIT | "_" )*
 NAMESPACED_NAME: LETTER (LETTER | DIGIT | "_" | "." )* (LETTER | DIGIT)+

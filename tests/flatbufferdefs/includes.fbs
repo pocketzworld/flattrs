@@ -1,0 +1,6 @@
+// All kinds of includes.
+include "./geometry/Vec3.fbs";
+
+table Includes {
+    vec3: vec3.Vec3 (required);
+}

@@ -1,0 +1,9 @@
+namespace vec3;
+
+table Vec3 {
+  x:float;
+  y:float;
+  z:float;
+}
+
+root_type Vec3;
