@@ -287,7 +287,7 @@ def render_directory(input: Path, output: Path) -> None:
     per_namespace: dict[str, list[ParsedModule]] = {}
     importables_to_module: dict[str, ParsedModule] = {}
     enums = set()
-    tables = []
+    tables: list[Table] = []
     for file in input.rglob("*.fbs"):
         rel_path = file.relative_to(input).with_suffix(".py")
         try:
@@ -313,16 +313,24 @@ def render_directory(input: Path, output: Path) -> None:
     (output / "__init__.py").write_text("")
     for pm_list in per_namespace.values():
         for pm in pm_list:
+            pm_path = pm.filename
             missing_imports = pm.imports.pop(MISSING, set())
-            for m in missing_imports:
-                module = importables_to_module[m]
-                if module.filename.parent == pm.filename.parent:
+            for importable in missing_imports:
+                module = importables_to_module[importable]
+                if module.filename.parent == pm_path.parent:
                     rel_path = f".{module.filename.stem}"
                 else:
-                    full_rel_path = module.filename.relative_to(pm.filename.parent)
-                    fname = full_rel_path.stem
-                    rel_path = f".{str(full_rel_path.parent).replace('/', '.')}.{fname}"
-                pm.imports.setdefault(str(rel_path), set()).add(m)
+                    pm_parents = set(pm_path.parents)
+                    target_parents = set(module.filename.parents)
+                    common_parent = sorted(
+                        pm_parents & target_parents, key=lambda p: -len(str(p))
+                    )[0]
+                    num_dots = len(pm_path.relative_to(common_parent).parent.parts) + 1
+
+                    target_rel_path = module.filename.relative_to(common_parent)
+                    fname = target_rel_path.stem
+                    rel_path = f"{'.' * num_dots}{str(target_rel_path.parent).replace('/', '.')}.{fname}"
+                pm.imports.setdefault(str(rel_path), set()).add(importable)
             try:
                 target_file = output / pm.filename
                 target_file.parent.mkdir(exist_ok=True, parents=True)

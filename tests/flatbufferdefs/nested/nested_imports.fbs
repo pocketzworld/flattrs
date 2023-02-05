@@ -1,0 +1,9 @@
+include "geometry/Vec3.fbs";
+
+// Try including something that's from a level above.
+
+namespace flattrs_test.nested;
+
+table NestedInclude {
+    test: vec3.Vec3;
+}
