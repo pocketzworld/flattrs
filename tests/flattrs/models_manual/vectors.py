@@ -42,32 +42,32 @@ class VectorsOfScalars:
 
 @flattrs
 class OptionalVectorsOfScalars:
-    vecOfBools: list[bool] | None
-    vecOfUint8s: bytes | None
-    vecOfUint16s: list[Uint16] | None
-    vecOfUint32s: list[Uint32] | None
-    vecOfUint64s: list[Uint64] | None
-    vecOfInt8s: list[Int8] | None
-    vecOfInt16s: list[Int16] | None
-    vecOfInt32s: list[Int32] | None
-    vecOfInt64s: list[int] | None
-    vecOfFloat32s: list[Float32] | None
-    vecOfFloat64s: list[float] | None
+    vecOfBools: list[bool] | None = None
+    vecOfUint8s: bytes | None = None
+    vecOfUint16s: list[Uint16] | None = None
+    vecOfUint32s: list[Uint32] | None = None
+    vecOfUint64s: list[Uint64] | None = None
+    vecOfInt8s: list[Int8] | None = None
+    vecOfInt16s: list[Int16] | None = None
+    vecOfInt32s: list[Int32] | None = None
+    vecOfInt64s: list[int] | None = None
+    vecOfFloat32s: list[Float32] | None = None
+    vecOfFloat64s: list[float] | None = None
 
 
 @flattrs
 class SeqVectorsOfScalars:
-    vecOfBools: list[bool] | None
-    vecOfUint8s: bytes | None
-    vecOfUint16s: list[Uint16] | None
-    vecOfUint32s: list[Uint32] | None
-    vecOfUint64s: list[Uint64] | None
-    vecOfInt8s: list[Int8] | None
-    vecOfInt16s: list[Int16] | None
-    vecOfInt32s: list[Int32] | None
-    vecOfInt64s: list[int] | None
-    vecOfFloat32s: list[Float32] | None
-    vecOfFloat64s: list[float] | None
+    vecOfBools: list[bool] | None = None
+    vecOfUint8s: bytes | None = None
+    vecOfUint16s: list[Uint16] | None = None
+    vecOfUint32s: list[Uint32] | None = None
+    vecOfUint64s: list[Uint64] | None = None
+    vecOfInt8s: list[Int8] | None = None
+    vecOfInt16s: list[Int16] | None = None
+    vecOfInt32s: list[Int32] | None = None
+    vecOfInt64s: list[int] | None = None
+    vecOfFloat32s: list[Float32] | None = None
+    vecOfFloat64s: list[float] | None = None
 
 
 @flattrs
@@ -77,7 +77,7 @@ class VectorOfCommon1:
 
 @flattrs
 class SeqVectorOfCommon1:
-    vecOfCommon: list[Common1] | None
+    vecOfCommon: list[Common1] | None = None
 
 
 @flattrs
@@ -87,7 +87,7 @@ class ByteArrayTable:
 
 @flattrs
 class OptionalByteArrayTable:
-    contents: bytes | None
+    contents: bytes | None = None
 
 
 @flattrs
@@ -97,12 +97,12 @@ class VectorOfEnums:
 
 @flattrs
 class OptVectorOfEnums:
-    enums: list[ASimpleUByteEnum] | None
+    enums: list[ASimpleUByteEnum] | None = None
 
 
 @flattrs
 class SeqVectorOfEnums:
-    enums: list[ASimpleUByteEnum] | None
+    enums: list[ASimpleUByteEnum] | None = None
 
 
 @flattrs
@@ -117,19 +117,19 @@ class VectorOfStrings:
 
 @flattrs
 class OptionalVectorOfStrings:
-    strings: list[str] | None
+    strings: list[str] | None = None
 
 
 @flattrs
 class OptionalSeqVectorOfStrings:
-    strings: list[str] | None
+    strings: list[str] | None = None
 
 
 @flattrs
 class VectorOfOptionalCommon1:
-    vecOfCommon: list[Common1] | None
+    vecOfCommon: list[Common1] | None = None
 
 
 @flattrs
 class SeqVectorOfOptionalCommon1:
-    vecOfCommon: list[Common1] | None
+    vecOfCommon: list[Common1] | None = None

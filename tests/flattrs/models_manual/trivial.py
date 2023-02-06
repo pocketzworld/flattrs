@@ -12,7 +12,7 @@ class JustAString:
 
 @flattrs
 class JustAnOptionalString:
-    id: str | None
+    id: str | None = None
 
 
 @flattrs
@@ -22,7 +22,7 @@ class JustBytes:
 
 @flattrs
 class JustOptionalBytes:
-    value: bytes | None
+    value: bytes | None = None
 
 
 @flattrs

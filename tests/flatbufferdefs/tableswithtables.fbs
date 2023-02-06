@@ -1,6 +1,7 @@
 include "common.fbs";
 include "nested/nested_trivial.fbs";
 include "geometry/Vec3.fbs";
+include "enums.fbs";
 
 namespace flattrs_test;
 
@@ -45,4 +46,9 @@ table OptionalTable {
 
 table ContainsNamespaced {
     inside: nested.NestedJustAString (required);
+}
+
+table OptionalTableAfterEnum {
+    an_enum: AnInt8Enum = EIGHT;
+    opt_table: Common1;
 }

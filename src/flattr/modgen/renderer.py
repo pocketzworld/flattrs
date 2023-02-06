@@ -46,6 +46,24 @@ class Table:
             for f in self.field_defs
         ]
 
+    def adjust_defaults(self) -> None:
+        """Insert default values as possible, starting from the back.
+
+        This is to preserve backwards comp when optional fields are added.
+        """
+        new_field_defs = []
+        can_add_defaults = True
+        for field_def in reversed(self.field_defs):
+            if can_add_defaults:
+                if field_def.is_optional:
+                    if not field_def.default:
+                        field_def = evolve(field_def, default="None")
+                elif not field_def.default:
+                    # We need to stop adding defaults.
+                    can_add_defaults = False
+            new_field_defs.append(field_def)
+        self.field_defs = list(reversed(new_field_defs))
+
     def render(self) -> Script:
         lines = [
             "@flattrs",
@@ -307,6 +325,12 @@ def render_directory(input: Path, output: Path) -> None:
     # Tables referencing those need to have their types adjusted.
     for table in tables:
         table.adjust_enums(enums)
+
+    # For each table, add defaults as much as possible,
+    # starting from backwards. This is so fields added at the end
+    # keep backwards comp.
+    for table in tables:
+        table.adjust_defaults()
 
     # Now we write the modules to disk.
     output.mkdir(exist_ok=True, parents=True)

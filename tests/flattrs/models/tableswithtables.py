@@ -5,6 +5,7 @@ from typing import Annotated
 from flattr import UnionVal, flattrs
 
 from .common import AllScalars, AllScalarsWithDefaults, Common1
+from .enums import AnInt8Enum
 from .nested.nested_trivial import NestedJustAString
 
 
@@ -37,19 +38,25 @@ class UnionOfNestedTables:
 
 @flattrs
 class UnionOfOptionalTables:
-    innerUnion: CommonUnion | None
+    innerUnion: CommonUnion | None = None
 
 
 @flattrs
 class NumberedUnionTable:
-    innerUnion: NumberedUnion | None
+    innerUnion: NumberedUnion | None = None
 
 
 @flattrs
 class OptionalTable:
-    inner: Common1 | None
+    inner: Common1 | None = None
 
 
 @flattrs
 class ContainsNamespaced:
     inside: NestedJustAString
+
+
+@flattrs
+class OptionalTableAfterEnum:
+    an_enum: AnInt8Enum = AnInt8Enum.EIGHT
+    opt_table: Common1 | None = None

@@ -7,4 +7,4 @@ from ..geometry.Vec3 import Vec3
 
 @flattrs
 class NestedInclude:
-    test: Vec3 | None
+    test: Vec3 | None = None
