@@ -6,4 +6,5 @@ namespace flattrs_test.nested;
 
 table NestedInclude {
     test: vec3.Vec3;
+    common: flattrs_test.Common1;
 }

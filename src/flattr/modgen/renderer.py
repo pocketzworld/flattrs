@@ -266,7 +266,7 @@ class FlatbufferRenderer(Interpreter):
         self, tree: ParseTree
     ) -> tuple[str, str, str, Optionality, Imports, str]:
         imports = {}
-        name = tree.children[0]
+        name = str(tree.children[0])
         full_type = tree.children[1]
         is_required = False
         for attr_tree in tree.find_data("table_field_attributes"):
@@ -382,9 +382,11 @@ def render_directory(input: Path, output: Path) -> None:
             missing_imports = pm.imports.pop(MISSING, set())
             for importable in missing_imports:
                 module = importables_to_module[importable]
+
                 if module.filename.parent == pm_path.parent:
                     rel_path = f".{module.filename.stem}"
                 else:
+
                     pm_parents = set(pm_path.parents)
                     target_parents = set(module.filename.parents)
                     common_parent = sorted(
@@ -394,7 +396,10 @@ def render_directory(input: Path, output: Path) -> None:
 
                     target_rel_path = module.filename.relative_to(common_parent)
                     fname = target_rel_path.stem
-                    rel_path = f"{'.' * num_dots}{str(target_rel_path.parent).replace('/', '.')}.{fname}"
+                    if target_rel_path.parent == Path("."):
+                        rel_path = f"{'.' * num_dots}{fname}"
+                    else:
+                        rel_path = f"{'.' * num_dots}{str(target_rel_path.parent).replace('/', '.')}.{fname}"
                 pm.imports.setdefault(str(rel_path), set()).add(importable)
             try:
                 target_file = output / pm.filename
