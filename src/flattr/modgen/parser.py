@@ -24,7 +24,7 @@ NAMESPACED_NAME: LETTER (LETTER | DIGIT | "_" | "." )* (LETTER | DIGIT | "_")+
 root_type: "root_type" NAME ";"
 include: "include \"" FILEPATH "\"" ";"
 
-enum: "enum" NAME ":" TYPE_INTS "{" [ enum_field ("," enum_field)*] ","? "}"
+enum: "enum" NAME ":" INT_TYPES "{" [ enum_field ("," enum_field)*] ","? "}"
 enum_field: NAME enum_field_default?
 enum_field_default: "=" NUMBER
 
@@ -36,12 +36,12 @@ table_field_attributes: "(" [WORD ("," WORD)*] ")"
 union: "union" NAME "{" [union_member ("," union_member ","?)*] "}"
 union_member: NAMESPACED_NAME ("=" DECIMAL_POSITIVE_INTEGER)?
 
-TYPE_BOOL: "bool"
-TYPE_INTS: "u"? "int" ("8"|"16"|"32"|"64")? | "ubyte" | "ushort" | "ulong"
+BOOL_TYPE: "bool"
+INT_TYPES: "u"? "int" ("8"|"16"|"32"|"64")? | "ubyte" | "ushort" | "ulong"
            | "byte" | "short" | "long"
 FLOAT_TYPES: "float" | "float32" | "double" | "float64"
 STRING_TYPE: "string"
-scalar_type: TYPE_BOOL | TYPE_INTS | FLOAT_TYPES
+scalar_type: BOOL_TYPE | INT_TYPES | FLOAT_TYPES
 vector_type: "[" NAMESPACED_NAME "]"
 
 module: include* namespace? (table | enum | union)* root_type?

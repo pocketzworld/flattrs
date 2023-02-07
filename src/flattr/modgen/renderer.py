@@ -28,6 +28,7 @@ class Table:
 
     name: ImportableName
     field_defs: list[Field]
+    imports: Imports
 
     def adjust_enums(self, enums: set[str]) -> None:
         """
@@ -50,6 +51,9 @@ class Table:
         """Insert default values as possible, starting from the back.
 
         This is to preserve backwards comp when optional fields are added.
+
+        This needs to run after `adjust_enums`, since it depends on the
+        optionality of fields.
         """
         new_field_defs = []
         can_add_defaults = True
@@ -65,19 +69,42 @@ class Table:
         self.field_defs = list(reversed(new_field_defs))
 
     def render(self) -> Script:
+        # This can be a little tricky, since we need to use `attrs.field`
+        # in case we need to supress the repr.
         lines = [
             "@flattrs",
             f"class {self.name}:",
         ]
+        field_lines = []
         for f in self.field_defs:
             def_str = ""
-            if f.default:
+            has_repr = True
+            if f.type == "bytes":
+                has_repr = False
+
+            needs_field = not has_repr
+
+            if needs_field:
+                self.imports = merge_imports(self.imports, {"attrs": {"field"}})
+                field_args = []
+                if f.default:
+                    field_args.append(("default", f.default))
+                if not has_repr:
+                    field_args.append(("repr", "False"))
+                field_str = f", ".join(f"{k}={v}" for k, v in field_args)
+                def_str = f" = field({field_str})"
+            elif f.default:
                 def_str = f" = {f.default}"
+
             line = (
                 f"    {f.name}: {f.type}{' | None' if f.is_optional else ''}{def_str}"
             )
-            lines.append(line)
-        return lines
+            field_lines.append(line)
+
+        if not self.field_defs:
+            field_lines.append("    pass")
+        script = lines + field_lines
+        return script
 
 
 @define
@@ -92,29 +119,42 @@ class Enum:
 
 
 @define
-class ParsedModule:
+class Module:
     namespace: str | None
     filename: Path
     imports: Imports
     importables: list[tuple[ImportableName, Script | Table | Enum]]
 
     def render(self) -> str:
+
+        body = ""
+        imports = self.imports
+        for item in self.importables:
+            if isinstance(item[1], Table):
+                body += "\n".join(item[1].render())
+                imports = merge_imports(imports, item[1].imports)
+            elif isinstance(item[1], Enum):
+                body += "\n".join(item[1].render())
+            else:
+                body += "\n".join(item[1])
+            body += "\n\n\n"
+
+        imports = self.imports
+        for _, item in self.importables:
+            if isinstance(item, Table):
+                imports = merge_imports(imports, item.imports)
+        self.imports = imports
+        self.imports.pop(MISSING, None)
+
         script = (
             "from __future__ import annotations\n\n"
             + "\n".join(
                 f"from {source} import {', '.join(sorted(targets))}"
-                for source, targets in self.imports.items()
+                for source, targets in imports.items()
             )
             + "\n"
+            + body
         )
-        for item in self.importables:
-            if isinstance(item[1], Table):
-                script += "\n".join(item[1].render())
-            elif isinstance(item[1], Enum):
-                script += "\n".join(item[1].render())
-            else:
-                script += "\n".join(item[1])
-            script += "\n\n\n"
         return script
 
 
@@ -126,7 +166,7 @@ class FlatbufferRenderer(Interpreter):
     may need to be adjusted based on the actual types.
     """
 
-    def module(self, tree: ParseTree, filename: Path) -> ParsedModule:
+    def module(self, tree: ParseTree, filename: Path) -> Module:
         namespace = None
         for t in tree.find_data("namespace"):
             namespace = str(t.children[0])
@@ -152,7 +192,7 @@ class FlatbufferRenderer(Interpreter):
                         imports[k] = set()
                     imports[k] |= v
 
-        return ParsedModule(namespace, filename, imports, lines)
+        return Module(namespace, filename, imports, lines)
 
     def namespace(self, _: ParseTree) -> tuple[list[str], Imports]:
         return [], {}
@@ -217,6 +257,7 @@ class FlatbufferRenderer(Interpreter):
             Table(
                 name,
                 [Table.Field(f[0], f[1], f[2], f[3], f[5] or None) for f in field_defs],
+                imports,
             ),
             imports,
         )
@@ -294,7 +335,7 @@ class FlatbufferRenderer(Interpreter):
         pass
 
 
-def parse_module(module_tree: Tree, file: Path) -> ParsedModule:
+def parse_module(module_tree: Tree, file: Path) -> Module:
     r = FlatbufferRenderer()
     parsed_module = r.module(module_tree, file)
     return parsed_module
@@ -302,8 +343,8 @@ def parse_module(module_tree: Tree, file: Path) -> ParsedModule:
 
 def render_directory(input: Path, output: Path) -> None:
     # First we parse, then we resolve imports, then we write.
-    per_namespace: dict[str, list[ParsedModule]] = {}
-    importables_to_module: dict[str, ParsedModule] = {}
+    per_namespace: dict[str, list[Module]] = {}
+    importables_to_module: dict[str, Module] = {}
     enums = set()
     tables: list[Table] = []
     for file in input.rglob("*.fbs"):

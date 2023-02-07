@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from attrs import field
+
 from flattr import Float32, Int8, Int16, Int32, Uint16, Uint32, Uint64, flattrs
 
 from .common import Common1
@@ -28,7 +30,7 @@ class VectorsOfFloats:
 @flattrs
 class VectorsOfScalars:
     vecOfBools: list[bool]
-    vecOfUint8s: bytes
+    vecOfUint8s: bytes = field(repr=False)
     vecOfUint16s: list[Uint16]
     vecOfUint32s: list[Uint32]
     vecOfUint64s: list[Uint64]
@@ -43,7 +45,7 @@ class VectorsOfScalars:
 @flattrs
 class OptionalVectorsOfScalars:
     vecOfBools: list[bool] | None = None
-    vecOfUint8s: bytes | None = None
+    vecOfUint8s: bytes | None = field(default=None, repr=False)
     vecOfUint16s: list[Uint16] | None = None
     vecOfUint32s: list[Uint32] | None = None
     vecOfUint64s: list[Uint64] | None = None
@@ -58,7 +60,7 @@ class OptionalVectorsOfScalars:
 @flattrs
 class SeqVectorsOfScalars:
     vecOfBools: list[bool] | None = None
-    vecOfUint8s: bytes | None = None
+    vecOfUint8s: bytes | None = field(default=None, repr=False)
     vecOfUint16s: list[Uint16] | None = None
     vecOfUint32s: list[Uint32] | None = None
     vecOfUint64s: list[Uint64] | None = None
@@ -82,12 +84,12 @@ class SeqVectorOfCommon1:
 
 @flattrs
 class ByteArrayTable:
-    contents: bytes
+    contents: bytes = field(repr=False)
 
 
 @flattrs
 class OptionalByteArrayTable:
-    contents: bytes | None = None
+    contents: bytes | None = field(default=None, repr=False)
 
 
 @flattrs

@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from attrs import field
+
 from flattr import Float32, flattrs
 
 from .enums import ASimpleByteEnum
@@ -17,12 +19,12 @@ class JustAnOptionalString:
 
 @flattrs
 class JustBytes:
-    value: bytes
+    value: bytes = field(repr=False)
 
 
 @flattrs
 class JustOptionalBytes:
-    value: bytes | None = None
+    value: bytes | None = field(default=None, repr=False)
 
 
 @flattrs
@@ -45,3 +47,8 @@ class HasCaps:
     fieldCAPS: str
     fieldCAPSInMiddle: str
     aBc: str
+
+
+@flattrs
+class Empty:
+    pass
