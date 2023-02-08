@@ -4,7 +4,7 @@ from hypothesis.strategies import sampled_from, tuples
 
 from flattr import model_from_bytes, model_to_bytes
 
-from .models_enums import (
+from .models.enums import (
     AllEnums,
     AnInt8Enum,
     AnInt16Enum,

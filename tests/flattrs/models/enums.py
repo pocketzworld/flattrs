@@ -1,30 +1,31 @@
-from flattr import flattrs
-from flattr.types import (
-    ByteEnum,
+from __future__ import annotations
+
+from enum import IntEnum
+
+from flattr import (
     Int8Enum,
     Int16Enum,
     Int32Enum,
-    Int64Enum,
-    UbyteEnum,
     Uint8Enum,
     Uint16Enum,
     Uint32Enum,
     Uint64Enum,
+    flattrs,
 )
 
 
-class ASimpleUByteEnum(UbyteEnum):
+class ASimpleUByteEnum(Uint8Enum):
     ONE = 0
     TWO = 255
 
 
-class ASimpleByteEnum(ByteEnum):
-    THREE = 0
-    FOUR = -127
+class ASimpleByteEnum(Int8Enum):
+    THREE_ = 0
+    FOUR_ = -127
 
 
 class AnUInt8Enum(Uint8Enum):
-    FIVE = 254
+    FIVE_ = 254
     SIX = 255
 
 
@@ -45,7 +46,7 @@ class AnInt16Enum(Int16Enum):
 
 class AnUInt32Enum(Uint32Enum):
     THIRTEEN = 0
-    FOURTEEN = 4_000_000_000
+    FOURTEEN = 4000000000
 
 
 class AnInt32Enum(Int32Enum):
@@ -58,7 +59,7 @@ class AnUInt64Enum(Uint64Enum):
     EIGHTEEN = 40000000001
 
 
-class AnInt64Enum(Int64Enum):
+class AnInt64Enum(IntEnum):
     NINETEEN = -40000000001
     TWENTY = -40000000000
 
@@ -67,7 +68,7 @@ class AnInt64Enum(Int64Enum):
 class AllEnums:
     simple_ubyte: ASimpleUByteEnum
     simple_byte: ASimpleByteEnum
-    uint8enum: AnUInt8Enum = AnUInt8Enum.FIVE
+    uint8enum: AnUInt8Enum = AnUInt8Enum.FIVE_
     int8enum: AnInt8Enum = AnInt8Enum.SEVEN
     uint16enum: AnUInt16Enum = AnUInt16Enum.NINE
     int16enum: AnInt16Enum = AnInt16Enum.ELEVEN

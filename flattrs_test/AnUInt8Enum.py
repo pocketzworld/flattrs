@@ -3,5 +3,5 @@
 # namespace: flattrs_test
 
 class AnUInt8Enum(object):
-    FIVE = 254
+    FIVE_ = 254
     SIX = 255

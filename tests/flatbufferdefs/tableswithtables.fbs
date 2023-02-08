@@ -1,5 +1,7 @@
 include "common.fbs";
 include "nested/nested_trivial.fbs";
+include "geometry/Vec3.fbs";
+include "enums.fbs";
 
 namespace flattrs_test;
 
@@ -14,14 +16,24 @@ table UnionOfTables {
     innerUnion: CommonUnion (required);
 }
 
-union NestedUnion { Common1, nested.NestedJustAString }
+// Multiline on purpose.
+union NestedUnion {
+    Common1,
+    nested.NestedJustAString
+}
+
+// Trailing comma.
+union NestedUnion2 {
+    Common1,
+    nested.NestedJustAString,
+}
 
 table UnionOfNestedTables {
     innerUnion: NestedUnion (required);
 }
 
 table UnionOfOptionalTables {
-    innerUnion: CommonUnion (required);
+    innerUnion: CommonUnion;
 }
 
 table NumberedUnionTable {
@@ -30,4 +42,13 @@ table NumberedUnionTable {
 
 table OptionalTable {
     inner: Common1;
+}
+
+table ContainsNamespaced {
+    inside: nested.NestedJustAString (required);
+}
+
+table OptionalTableAfterEnum {
+    an_enum: AnInt8Enum = EIGHT;
+    opt_table: Common1;
 }

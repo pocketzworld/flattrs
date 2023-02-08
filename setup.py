@@ -14,7 +14,12 @@ setup(
     long_description="Flatbuffers support for Python",
     long_description_content_type="text/x-rst",
     version="0.1.16",
-    install_requires=["attrs", "flatbuffers==23.1.4"],
+    install_requires=[
+        "attrs",
+        "flatbuffers==23.1.4",
+        "click",
+        "lark >= 1.1.5",
+    ],
     packages=find_packages(where="src"),
     package_dir={"": "src"},
     ext_modules=ext_modules,
@@ -22,13 +27,13 @@ setup(
     extras_require={
         "dev": [
             "pytest",
-            "hypothesis==6.61.0",
+            "hypothesis",
             "cython==0.29.32",
             "coverage",
-            "tox==4.0.11",
             "cattrs",
             "nox",
             "numpy",
+            "isort",
         ]
     },
     package_data={"": ["*.pxd", "*.pyx", "py.typed"]},

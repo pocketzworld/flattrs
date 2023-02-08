@@ -7,7 +7,7 @@ from flattr import model_from_bytes, model_to_bytes
 
 from ..flatc import models_enums as models_enums_flatc
 from ..flatc.test_enums import all_enums
-from ..flattrs import models_enums as models_enums_flattrs
+from ..flattrs.models import enums as models_enums_flattrs
 
 
 @given(

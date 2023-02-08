@@ -52,6 +52,7 @@ from .typing import (
     is_annotated_with,
     is_generic_subclass,
     is_subclass,
+    resolve_types,
 )
 
 try:
@@ -82,6 +83,7 @@ def flattrs(cl=None, *, frozen: bool = False, repr: bool | None = None):
 
     def wrapper(cl):
         res = define(slots=True, frozen=frozen, repr=repr)(cl)
+        resolve_types(res)
         num_slots = _guess_num_slots(res)
         _make_fb_functions(
             res,

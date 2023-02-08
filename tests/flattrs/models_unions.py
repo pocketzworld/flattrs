@@ -2,7 +2,7 @@ from typing import Annotated, Union
 
 from flattr import UnionVal, flattrs
 
-from .models_common import AllScalars, AllScalarsWithDefaults, Common1
+from .models.common import AllScalars, AllScalarsWithDefaults, Common1
 from .models_nested import NestedJustAString
 
 

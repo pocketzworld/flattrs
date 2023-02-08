@@ -2,7 +2,7 @@ from typing import Annotated
 
 from flattr import Float, flattrs
 
-from .models_enums import ASimpleByteEnum
+from .models.enums import ASimpleByteEnum
 
 
 @flattrs

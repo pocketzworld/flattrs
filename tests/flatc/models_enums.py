@@ -13,13 +13,13 @@ class ASimpleUByteEnum(IntEnum):
 
 @from_package_enum(flattrs_test)
 class ASimpleByteEnum(IntEnum):
-    THREE = 0
-    FOUR = -127
+    THREE_ = 0
+    FOUR_ = -127
 
 
 @from_package_enum(flattrs_test)
 class AnUInt8Enum(IntEnum):
-    FIVE = 254
+    FIVE_ = 254
     SIX = 255
 
 
@@ -69,7 +69,7 @@ class AnInt64Enum(IntEnum):
 class AllEnums:
     simple_ubyte: ASimpleUByteEnum
     simple_byte: ASimpleByteEnum
-    uint8enum: AnUInt8Enum = AnUInt8Enum.FIVE
+    uint8enum: AnUInt8Enum = AnUInt8Enum.FIVE_
     int8enum: AnInt8Enum = AnInt8Enum.SEVEN
     uint16enum: AnUInt16Enum = AnUInt16Enum.NINE
     int16enum: AnInt16Enum = AnInt16Enum.ELEVEN

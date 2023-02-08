@@ -16,7 +16,7 @@ from ..strats import (
     uint32s,
     uint64s,
 )
-from .models_common import AllScalars, AllScalarsWithDefaults, Common1
+from .models.common import AllScalars, AllScalarsWithDefaults, Common1
 
 common1s = tuples(text(), uint8s, int32s).map(lambda a: Common1(*a))
 

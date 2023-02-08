@@ -1,18 +1,13 @@
-import attr
-
 import flattrs_test
 from flattr import Flatbuffer, from_package
 from flattrs_test.AllScalarsWithDefaults import AllScalarsWithDefaults
 
 
-@Flatbuffer.from_package(flattrs_test, repr=False)
+@Flatbuffer.from_package(flattrs_test)
 class Common1:
     id: str
     aSmallInt: int
     aBigInt: int
-
-    def __repr__(self):
-        return f"{self.id}:{self.aSmallInt}:{self.aBigInt}"
 
 
 @from_package(flattrs_test)

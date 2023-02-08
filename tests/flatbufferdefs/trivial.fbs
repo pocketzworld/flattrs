@@ -2,16 +2,19 @@ include "enums.fbs";
 
 namespace flattrs_test;
 
+// A comment that should be ignored.
 table JustAString {
     id: string (required);
 }
 
+/* Multiline
+   comment */
 table JustAnOptionalString {
     id: string;
 }
 
 table JustBytes {
-    value: [uint8];
+    value: [uint8] (required);
 }
 
 table JustOptionalBytes {
@@ -27,7 +30,7 @@ table JustADouble {
 }
 
 table JustAnEnum {
-    value: flattrs_test.ASimpleByteEnum;
+    value: ASimpleByteEnum;
 }
 
 table HasCaps {
@@ -35,3 +38,5 @@ table HasCaps {
     fieldCAPSInMiddle: string (required);
     aBc: string(required);
 }
+
+table Empty {}
