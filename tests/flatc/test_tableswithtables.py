@@ -1,7 +1,7 @@
 from hypothesis import given
-from hypothesis.strategies import DrawFn, booleans, composite, none
+from hypothesis.strategies import DrawFn, composite, none
 
-from flattr import model_from_bytes, model_to_bytes
+from tests import model_from_bytes, model_to_bytes
 
 from .models_tableswithtables import ContainsTable, OptionalTable
 from .test_common import common1s

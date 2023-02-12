@@ -1,7 +1,7 @@
 from hypothesis import given
 from hypothesis.strategies import DrawFn, composite, lists
 
-from flattr import model_to_bytes
+from tests import model_to_bytes
 
 from ..flatc.models_vectors import VectorsOfFloats, VectorsOfInts
 from ..flatc.test_vectors import (

@@ -1,9 +1,8 @@
 """Test serialization and deserialization of common tables."""
-from attrs import fields
 from hypothesis import given
 from hypothesis.strategies import booleans, composite, text
 
-from flattr import model_from_bytes, model_to_bytes
+from tests import model_from_bytes, model_to_bytes
 
 from ..strats import (
     float32s,

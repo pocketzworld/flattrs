@@ -3,7 +3,8 @@ from attrs import asdict
 from cattrs import structure, unstructure
 from hypothesis import given
 
-from flattr import dumps, loads, model_from_bytes, model_to_bytes
+from flattr import dumps, loads
+from tests import model_from_bytes, model_to_bytes
 
 from ..flatc import models_enums as models_enums_flatc
 from ..flatc.test_enums import all_enums

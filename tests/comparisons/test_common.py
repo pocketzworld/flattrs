@@ -3,7 +3,8 @@ from attrs import asdict
 from hypothesis import given
 from hypothesis.strategies import text, tuples
 
-from flattr import dumps, loads, model_from_bytes, model_to_bytes
+from flattr import dumps, loads
+from tests import model_from_bytes, model_to_bytes
 
 from ..flatc import models_common as models_common_flatc
 from ..flatc.test_common import all_scalars, all_scalars_with_defaults

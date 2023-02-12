@@ -12,7 +12,7 @@ from hypothesis.strategies import (
     text,
 )
 
-from flattr import model_from_bytes, model_to_bytes
+from tests import model_from_bytes, model_to_bytes
 
 from .models_enums import ASimpleByteEnum
 from .models_trivial import (

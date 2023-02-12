@@ -3,7 +3,8 @@ from cattrs import structure, unstructure
 from hypothesis import given
 from hypothesis.strategies import booleans, lists, tuples
 
-from flattr import dumps, loads, model_from_bytes, model_to_bytes
+from flattr import dumps, loads
+from tests import model_from_bytes, model_to_bytes
 
 from ..flatc import models_vectors as models_vectors_flatc
 from ..flatc.test_vectors import (

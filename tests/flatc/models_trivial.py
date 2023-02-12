@@ -2,7 +2,6 @@ import attr
 from attrs import field
 
 import flattrs_test
-from flattr import Flatbuffer
 from flattrs_test.HasCaps import HasCaps
 from flattrs_test.JustADouble import JustADouble
 from flattrs_test.JustAFloat import JustAFloat
@@ -10,6 +9,7 @@ from flattrs_test.JustAnOptionalString import JustAnOptionalString
 from flattrs_test.JustAString import JustAString
 from flattrs_test.JustBytes import JustBytes
 from flattrs_test.JustOptionalBytes import JustOptionalBytes
+from tests import Flatbuffer
 
 from .models_enums import ASimpleByteEnum
 

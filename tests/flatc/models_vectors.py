@@ -1,7 +1,6 @@
 from attrs import field
 
 import flattrs_test
-from flattr import Flatbuffer, from_package
 from flattrs_test.ByteArrayTable import ByteArrayTable
 from flattrs_test.OptionalByteArrayTable import OptionalByteArrayTable
 from flattrs_test.OptionalVectorsOfScalars import OptionalVectorsOfScalars
@@ -13,6 +12,7 @@ from flattrs_test.VectorsOfBools import VectorsOfBools
 from flattrs_test.VectorsOfFloats import VectorsOfFloats
 from flattrs_test.VectorsOfInts import VectorsOfInts
 from flattrs_test.VectorsOfScalars import VectorsOfScalars
+from tests import Flatbuffer, from_package
 
 from .models_common import Common1
 from .models_enums import ASimpleUByteEnum

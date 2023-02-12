@@ -11,7 +11,7 @@ from hypothesis.strategies import (
     tuples,
 )
 
-from flattr import model_from_bytes, model_to_bytes
+from tests import model_from_bytes, model_to_bytes
 
 from ..strats import (
     float32s,

@@ -3,7 +3,7 @@ from enum import IntEnum
 
 import pytest
 
-from flattr import FlatbufferEnum
+from tests import FlatbufferEnum
 
 
 def test_enum_name_mismatch() -> None:

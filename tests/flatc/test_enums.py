@@ -2,7 +2,7 @@
 from hypothesis import given
 from hypothesis.strategies import sampled_from, tuples
 
-from flattr import model_from_bytes, model_to_bytes
+from tests import model_from_bytes, model_to_bytes
 
 from .models_enums import (
     AllEnums,
