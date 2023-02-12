@@ -72,9 +72,10 @@ class Table:
         # This can be a little tricky, since we need to use `attrs.field`
         # in case we need to supress the repr.
         lines = [
-            "@flattrs",
+            "@define",
             f"class {self.name}:",
         ]
+        self.imports = merge_imports(self.imports, {"attrs": {"define"}})
         field_lines = []
         for f in self.field_defs:
             def_str = ""
@@ -126,7 +127,6 @@ class Module:
     importables: list[tuple[ImportableName, Script | Table | Enum]]
 
     def render(self) -> str:
-
         body = ""
         imports = self.imports
         for item in self.importables:
@@ -248,7 +248,7 @@ class FlatbufferRenderer(Interpreter):
     def table(self, tree: ParseTree) -> tuple[ImportableName, Table, Imports]:
         name = str(tree.children[0])
         field_defs = [self.table_field(c) for c in tree.children[1:]]
-        imports = {"flattr": {"flattrs"}}
+        imports = {}
         for _, _, _, _, field_imports, _ in field_defs:
             imports = merge_imports(imports, field_imports)
 
@@ -386,7 +386,6 @@ def render_directory(input: Path, output: Path) -> None:
                 if module.filename.parent == pm_path.parent:
                     rel_path = f".{module.filename.stem}"
                 else:
-
                     pm_parents = set(pm_path.parents)
                     target_parents = set(module.filename.parents)
                     common_parent = sorted(

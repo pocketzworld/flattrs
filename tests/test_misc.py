@@ -1,9 +1,10 @@
 """Misc tests for coverage."""
 from enum import Enum
 
+from attrs import define
 from pytest import raises
 
-from flattr import flattrs
+from flattr import dumps
 
 
 def test_unsupported_enums() -> None:
@@ -12,24 +13,32 @@ def test_unsupported_enums() -> None:
 
     with raises(TypeError):
 
-        @flattrs
+        @define
         class Test:
             test: TestEnum
 
+        dumps(Test(TestEnum.TEST))
+
     with raises(TypeError):
 
-        @flattrs
+        @define
         class Test:
             test: TestEnum | None
 
+        dumps(Test(TestEnum.TEST))
+
     with raises(TypeError):
 
-        @flattrs
+        @define
         class Test:
             test: list[TestEnum]
 
+        dumps(Test([TestEnum.TEST]))
+
     with raises(TypeError):
 
-        @flattrs
+        @define
         class Test:
             test: list[TestEnum] | None
+
+        dumps(Test(TestEnum.TEST))

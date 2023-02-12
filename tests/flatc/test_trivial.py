@@ -100,6 +100,6 @@ def test_just_a_simple_byte_enum_rt(inst):
     assert inst == model_from_bytes(inst.__class__, model_to_bytes(inst))
 
 
-@given(text().map(lambda t: HasCaps(t, t)))
+@given(text().map(lambda t: HasCaps(t, t, t)))
 def test_has_caps(inst: HasCaps) -> bool:
     assert inst == model_from_bytes(inst.__class__, model_to_bytes(inst))

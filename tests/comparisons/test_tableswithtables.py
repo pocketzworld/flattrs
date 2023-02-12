@@ -3,11 +3,11 @@ from attrs import asdict
 from cattrs import structure, unstructure
 from hypothesis import given
 
-from flattr import model_from_bytes, model_to_bytes
+from flattr import dumps, loads, model_from_bytes, model_to_bytes
 
 from ..flatc import models_tableswithtables as models_tableswithtables_flatc
 from ..flatc.test_tableswithtables import contains_tables, optional_tables
-from ..flattrs import models_tableswithtables as models_tableswithtables_flattrs
+from ..flattrs.models import tableswithtables as models_tableswithtables_flattrs
 
 
 @given(
@@ -26,15 +26,15 @@ def test_contains_table(
 ):
     flatc, flattrs = insts
     flatc_bytes = model_to_bytes(flatc)
-    flattrs_bytes = model_to_bytes(flattrs)
+    flattrs_bytes = dumps(flattrs)
     assert flatc_bytes == flattrs_bytes
 
     assert asdict(model_from_bytes(flatc.__class__, flattrs_bytes)) == asdict(
-        model_from_bytes(flattrs.__class__, flatc_bytes)
+        loads(flatc_bytes, flattrs.__class__)
     )
 
     assert repr(model_from_bytes(flatc.__class__, flatc_bytes)) == repr(
-        model_from_bytes(flattrs.__class__, flatc_bytes)
+        loads(flatc_bytes, flattrs.__class__)
     )
 
 
@@ -54,13 +54,13 @@ def test_optional_table(
 ):
     flatc, flattrs = insts
     flatc_bytes = model_to_bytes(flatc)
-    flattrs_bytes = model_to_bytes(flattrs)
+    flattrs_bytes = dumps(flattrs)
     assert flatc_bytes == flattrs_bytes
 
     assert asdict(model_from_bytes(flatc.__class__, flattrs_bytes)) == asdict(
-        model_from_bytes(flattrs.__class__, flatc_bytes)
+        loads(flatc_bytes, flattrs.__class__)
     )
 
     assert repr(model_from_bytes(flatc.__class__, flatc_bytes)) == repr(
-        model_from_bytes(flattrs.__class__, flatc_bytes)
+        loads(flatc_bytes, flattrs.__class__)
     )

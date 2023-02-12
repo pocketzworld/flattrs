@@ -1,4 +1,5 @@
 import attr
+from attrs import field
 
 import flattrs_test
 from flattr import Flatbuffer
@@ -30,7 +31,7 @@ class JustBytes:
 
 @Flatbuffer(JustOptionalBytes)
 class JustOptionalBytes:
-    value: bytes | None
+    value: bytes | None = field(repr=False)
 
 
 @Flatbuffer(JustAFloat)
@@ -52,3 +53,4 @@ class JustAnEnum:
 class HasCaps:
     fieldCAPS: str
     fieldCAPSInMiddle: str
+    aBc: str

@@ -1,54 +1,54 @@
 from __future__ import annotations
 
-from attrs import field
+from attrs import define, field
 
-from flattr import Float32, flattrs
+from flattr import Float32
 
 from .enums import ASimpleByteEnum
 
 
-@flattrs
+@define
 class JustAString:
     id: str
 
 
-@flattrs
+@define
 class JustAnOptionalString:
     id: str | None = None
 
 
-@flattrs
+@define
 class JustBytes:
     value: bytes = field(repr=False)
 
 
-@flattrs
+@define
 class JustOptionalBytes:
     value: bytes | None = field(default=None, repr=False)
 
 
-@flattrs
+@define
 class JustAFloat:
     value: Float32
 
 
-@flattrs
+@define
 class JustADouble:
     value: float
 
 
-@flattrs
+@define
 class JustAnEnum:
     value: ASimpleByteEnum
 
 
-@flattrs
+@define
 class HasCaps:
     fieldCAPS: str
     fieldCAPSInMiddle: str
     aBc: str
 
 
-@flattrs
+@define
 class Empty:
     pass

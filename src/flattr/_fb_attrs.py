@@ -1,18 +1,15 @@
 import hashlib
 import linecache
-from enum import Enum, IntEnum, unique
+from enum import Enum, unique
 from importlib import import_module
 from sys import modules
 from typing import Any, Callable, Final, TypeVar
 
 import attr
-from attrs import NOTHING, define, fields, has
+from attrs import NOTHING, AttrsInstance, define, fields
 
-from ._consts import (
-    HELPER_TYPE_TO_SCALAR_TYPE,
-    SCALAR_TYPE_TO_DEFAULT,
-    SCALAR_TYPE_TO_WIDTH,
-)
+from ._analysis import analyze
+from ._consts import SCALAR_TYPE_TO_DEFAULT, SCALAR_TYPE_TO_WIDTH, NoneType
 from ._flatc import (
     get_num_slots_from_flatc_module,
     get_scalar_list_types,
@@ -21,8 +18,6 @@ from ._flatc import (
 )
 from ._flatc import make_from_bytes_fn as flatc_make_from_bytes_fn
 from ._flatc import make_from_fb_fn as flatc_make_from_fb_fn
-from ._flattrs import make_from_bytes_flattrs_fn
-from ._flattrs import make_from_fb_fn as flattrs_make_from_fb_fn
 from ._types import (
     FieldName,
     MaybeDefault,
@@ -32,28 +27,7 @@ from ._types import (
     SlotNumber,
     UnionMapping,
 )
-from .types import (
-    Float,
-    Float64,
-    Int8,
-    Int16,
-    Int32,
-    Int64,
-    Uint8,
-    Uint16,
-    Uint32,
-    Uint64,
-    UnionVal,
-)
-from .typing import (
-    get_annotation_and_base,
-    get_optional_arg,
-    get_union_args,
-    is_annotated_with,
-    is_generic_subclass,
-    is_subclass,
-    resolve_types,
-)
+from .typing import get_union_args, resolve_types
 
 try:
     from .cflattr.builder import Builder
@@ -73,28 +47,6 @@ def __dataclass_transform__(
     ),
 ) -> Callable[[_T], _T]:
     return lambda c: c
-
-
-@__dataclass_transform__()
-def flattrs(cl=None, *, frozen: bool = False, repr: bool | None = None):
-    if cl is not None:
-        # Direct application
-        return flattrs(frozen=frozen, repr=repr)(cl)
-
-    def wrapper(cl):
-        res = define(slots=True, frozen=frozen, repr=repr)(cl)
-        resolve_types(res)
-        num_slots = _guess_num_slots(res)
-        _make_fb_functions(
-            res,
-            num_slots=num_slots,
-            make_from_bytes_fn=make_from_bytes_flattrs_fn,
-            make_from_fb_fn=flattrs_make_from_fb_fn,
-        )
-
-        return res
-
-    return wrapper
 
 
 @__dataclass_transform__()
@@ -168,11 +120,8 @@ Flatbuffer.from_package = from_package
 FlatbufferEnum.from_package = from_package_enum
 
 
-none_type = type(None)
-
-
 def _make_fb_functions(
-    cl,
+    cl: type[AttrsInstance],
     num_slots: int,
     make_from_bytes_fn: Callable[[Any], Callable],
     make_from_fb_fn: Callable,
@@ -181,171 +130,7 @@ def _make_fb_functions(
     union_overrides: dict[FieldName, UnionMapping] = {},
 ) -> None:
     """Generate all necessary functions for a class to work with Flatbuffers."""
-    strings: list[tuple[FieldName, SlotNumber, Optionality]] = []
-    byte_fields: list[tuple[FieldName, SlotNumber, Optionality]] = []
-    tables: list[tuple[FieldName, type, SlotNumber, Optionality]] = []
-    lists_of_tables: list[tuple[FieldName, type, SlotNumber, Optionality]] = []
-    lists_of_strings: list[tuple[FieldName, SlotNumber, Optionality]] = []
-    lists_of_scalars: list[
-        tuple[FieldName, SlotNumber, PythonScalarType, ScalarType, Optionality]
-    ] = []
-    lists_of_enums: list[
-        tuple[FieldName, SlotNumber, PythonScalarType, ScalarType, Optionality]
-    ] = []
-    enums: list[FieldName, str, SlotNumber, MaybeDefault] = []
-    inlines: list[FieldName, ScalarType, SlotNumber, MaybeDefault] = []
-    unions: list[tuple[FieldName, tuple[type, ...], UnionMapping, SlotNumber]] = []
-    next_slot_idx = 0
-
-    overridden = {f[0]: f for f in field_overrides}
-    overridden_sl: dict[FieldName, ScalarType] = {
-        f[0]: f[1] for f in scalar_list_overrides
-    }
-
-    for field in fields(cl):
-        if field.name in overridden:
-            f = overridden[field.name]
-            if issubclass(field.type, IntEnum):
-                enums.append((field.name, f[1], next_slot_idx, f[2]))
-            else:
-                inlines.append((field.name, f[1], next_slot_idx, f[2]))
-            next_slot_idx += 1
-            continue
-
-        ftype = field.type
-        if ftype is str:
-            strings.append((field.name, next_slot_idx, False))
-        elif ftype is bytes:
-            byte_fields.append((field.name, next_slot_idx, False))
-        elif has(ftype):
-            tables.append((field.name, field.type, next_slot_idx, False))
-        elif o := get_optional_arg(ftype):
-            # This is an optional field.
-            if o is str:
-                strings.append((field.name, next_slot_idx, True))
-            elif o is bytes:
-                byte_fields.append((field.name, next_slot_idx, True))
-            elif has(o):
-                tables.append((field.name, o, next_slot_idx, True))
-            elif is_generic_subclass(o, list):
-                arg = o.__args__[0]
-                if arg is str:
-                    lists_of_strings.append((field.name, next_slot_idx, True))
-                elif has(arg):
-                    lists_of_tables.append((field.name, arg, next_slot_idx, True))
-                elif arg in (
-                    bool,
-                    Uint8,
-                    Uint16,
-                    Uint32,
-                    Uint64,
-                    Int8,
-                    Int16,
-                    Int32,
-                    int,
-                    Float,
-                    Float64,
-                ):
-                    lists_of_scalars.append(
-                        (
-                            field.name,
-                            next_slot_idx,
-                            arg,
-                            overridden_sl.get(
-                                field.name, HELPER_TYPE_TO_SCALAR_TYPE[arg]
-                            ),
-                            True,
-                        )
-                    )
-                elif issubclass(arg, Enum) and issubclass(arg, int):
-                    for helper_type, scalar_type in HELPER_TYPE_TO_SCALAR_TYPE.items():
-                        if helper_type in arg.__mro__:
-                            break
-                    lists_of_enums.append(
-                        (
-                            field.name,
-                            next_slot_idx,
-                            arg,
-                            overridden_sl.get(field.name, scalar_type),
-                            True,
-                        )
-                    )
-                else:
-                    raise TypeError(f"Cannot handle {field.name} {ftype}")
-            else:
-                raise TypeError(f"Cannot handle {field.name} {ftype}")
-        elif u := get_union_args(ftype):
-            unions.append(
-                (
-                    field.name,
-                    u,
-                    union_overrides[field.name]
-                    if field.name in union_overrides
-                    else _make_union_mapping(u),
-                    next_slot_idx,
-                )
-            )
-            next_slot_idx += 1
-        elif is_generic_subclass(ftype, list):
-            arg = ftype.__args__[0]
-            if arg is str:
-                lists_of_strings.append((field.name, next_slot_idx, False))
-            elif has(arg):
-                lists_of_tables.append((field.name, arg, next_slot_idx, False))
-            elif arg in HELPER_TYPE_TO_SCALAR_TYPE:
-                lists_of_scalars.append(
-                    (
-                        field.name,
-                        next_slot_idx,
-                        arg,
-                        overridden_sl.get(field.name, HELPER_TYPE_TO_SCALAR_TYPE[arg]),
-                        False,
-                    )
-                )
-            elif issubclass(arg, Enum) and issubclass(arg, int):
-                for helper_type, scalar_type in HELPER_TYPE_TO_SCALAR_TYPE.items():
-                    if helper_type in arg.__mro__:
-                        break
-                lists_of_enums.append(
-                    (
-                        field.name,
-                        next_slot_idx,
-                        arg,
-                        overridden_sl.get(field.name, scalar_type),
-                        False,
-                    )
-                )
-            else:
-                raise TypeError(f"Cannot handle {field.name} {ftype}")
-        elif is_annotated_with(ftype, Float):
-            inlines.append((field.name, "Float32", next_slot_idx, field.default))
-        elif is_subclass(ftype, Enum) and is_subclass(
-            ftype, int
-        ):  # Enums before scalars, since IntEnum is a subclass of int.
-            for helper_type, scalar_type in HELPER_TYPE_TO_SCALAR_TYPE.items():
-                if helper_type in ftype.__mro__:
-                    break
-            enums.append(
-                (
-                    field.name,
-                    scalar_type,
-                    next_slot_idx,
-                    field.default if field.default is not NOTHING else list(ftype)[0],
-                )
-            )
-        elif is_subclass(ftype, (bool, Float, Float64, Uint8, Uint64, Int32, Int64)):
-            inlines.append(
-                (
-                    field.name,
-                    HELPER_TYPE_TO_SCALAR_TYPE[ftype],
-                    next_slot_idx,
-                    field.default,
-                )
-            )
-        else:
-            raise TypeError(f"Cannot handle {ftype}")
-
-        next_slot_idx += 1
+    fb_cls = analyze(cl, field_overrides, scalar_list_overrides, union_overrides)
 
     setattr(
         cl,
@@ -353,14 +138,14 @@ def _make_fb_functions(
         _make_add_to_builder_fn(
             cl,
             num_slots,
-            strings,
-            byte_fields,
-            tables,
-            lists_of_tables,
-            lists_of_strings,
-            lists_of_scalars + lists_of_enums,
-            inlines + enums,
-            unions,
+            fb_cls.strings,
+            fb_cls.byte_fields,
+            fb_cls.tables,
+            fb_cls.lists_of_tables,
+            fb_cls.lists_of_strings,
+            fb_cls.lists_of_scalars + fb_cls.lists_of_enums,
+            fb_cls.inlines + fb_cls.enums,
+            fb_cls.unions,
         ),
     )
 
@@ -370,16 +155,16 @@ def _make_fb_functions(
         "__fb_from_fb__",
         make_from_fb_fn(
             cl,
-            strings,
-            byte_fields,
-            enums,
-            tables,
-            lists_of_tables,
-            lists_of_strings,
-            unions,
-            inlines,
-            lists_of_scalars,
-            lists_of_enums,
+            fb_cls.strings,
+            fb_cls.byte_fields,
+            fb_cls.enums,
+            fb_cls.tables,
+            fb_cls.lists_of_tables,
+            fb_cls.lists_of_strings,
+            fb_cls.unions,
+            fb_cls.inlines,
+            fb_cls.lists_of_scalars,
+            fb_cls.lists_of_enums,
         ),
     )
 
@@ -400,24 +185,6 @@ def model_from_bytes(cl: type[_T], payload: bytes) -> _T:
     return cl.__fb_from_bytes__(payload)
 
 
-def _make_union_mapping(union_types: tuple[type, ...]) -> UnionMapping:
-    """Create a mapping of values to union members for use by the structuring logic."""
-    res = {}
-
-    curr_ix = 1
-    for t in union_types:
-        if t is none_type:
-            continue
-        if union_val_and_base := get_annotation_and_base(t, UnionVal):
-            union_val, base = union_val_and_base
-            curr_ix = union_val
-            t = base
-        res[curr_ix] = t
-        curr_ix += 1
-
-    return res
-
-
 class FBItemType(str, Enum):
     TABLE = "table"
 
@@ -426,7 +193,7 @@ FBItem = tuple[Any, FBItemType, Callable]
 
 
 def _make_add_to_builder_fn(
-    cl,
+    cl: type,
     num_slots: int,
     string_fields: list[tuple[FieldName, SlotNumber, Optionality]],
     byte_fields: list[tuple[FieldName, SlotNumber, Optionality]],
@@ -438,7 +205,7 @@ def _make_add_to_builder_fn(
     ],
     scalars: list[tuple[FieldName, ScalarType, SlotNumber, MaybeDefault]],
     unions: list[tuple[FieldName, tuple[type, ...], UnionMapping, SlotNumber]],
-):
+) -> Callable[[Any, Builder, dict[int, int], dict[int, int]], int]:
     name = cl.__name__
     globs = {}
     lines = []
@@ -528,7 +295,7 @@ def _make_add_to_builder_fn(
 
     for field, union_members, _, _ in unions:
         prefix = ""
-        is_optional = none_type in union_members
+        is_optional = NoneType in union_members
         if is_optional:
             prefix = f"if self.{field} is not None: "
         lines.append(
@@ -604,19 +371,19 @@ def _make_add_to_builder_fn(
         # they're defined.
         # stripped_union_dict = {k.split("_")[-1]: v for k, v in fb_enum.__dict__.items()}
 
-        union_dict = {t: ix for ix, t in union_mapping.items() if t is not none_type}
+        union_dict = {t: ix for ix, t in union_mapping.items() if t is not NoneType}
         # Flatbuffer unions always have a special member, NONE, signifying
         # a missing value. If None is part of union_types, we handle it
         # specially.
-        if none_type in union_types:
-            union_dict[none_type] = 0
+        if NoneType in union_types:
+            union_dict[NoneType] = 0
 
         globs[union_dict_name] = union_dict
         lines.append(
             f"    builder.PrependUint8Slot({slot_idx}, {union_dict_name}[self.{field}.__class__], 0)"
         )
         indent = ""
-        if none_type in union_types:
+        if NoneType in union_types:
             lines.append(f"    if self.{field} is not None:")
             indent = "    "
         lines.append(

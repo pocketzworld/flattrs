@@ -4,9 +4,9 @@ from typing import Any, TypeVar, Union, _AnnotatedAlias, _GenericAlias, get_args
 from attr._make import _obj_setattr
 from attrs import fields
 
+from ._consts import NoneType
 from ._types import Optionality
 
-none_type = type(None)
 T = TypeVar("T")
 
 
@@ -41,7 +41,7 @@ def get_optional_arg(type) -> Any | None:
     """Is this annotation an `Optional` (union of something and None)?"""
     if getattr(type, "__origin__", None) is Union or type.__class__ is UnionType:
         union_args = type.__args__
-        if len(union_args) == 2 and none_type in union_args:
+        if len(union_args) == 2 and NoneType in union_args:
             return [a for a in union_args if a is not None][0]
 
     return None
