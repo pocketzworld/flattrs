@@ -20,14 +20,14 @@ from flatbuffers.number_types import (
 )
 from flatbuffers.table import Table
 
-from ._analysis import FlatbufferClass, analyze
+from ._analysis import FlatbufferTable, analyze
 from ._consts import (
     SCALAR_TYPE_TO_DEFAULT,
     SCALAR_TYPE_TO_PYTHON,
     SCALAR_TYPE_TO_WIDTH,
     NoneType,
 )
-from ._types import ScalarType, UnionMapping
+from ._types import ScalarType
 from .types import UnionVal
 from .typing import get_annotation_and_base
 
@@ -98,7 +98,7 @@ AddToBuilder: TypeAlias = Callable[[T, Builder, dict[int, int], dict[int, int]],
 
 
 def _make_add_to_builder_fn(
-    cl: FlatbufferClass,
+    cl: FlatbufferTable,
     hook_factory: Callable[[type[AttrsInstance]], AddToBuilder[Any]],
 ) -> AddToBuilder[Any]:
     name = cl.cl.__name__
@@ -323,7 +323,7 @@ def _make_add_to_builder_fn(
 
 
 def make_from_fb_fn(
-    cl: FlatbufferClass, hook_factory: Callable[[type[AttrsInstance]], Callable]
+    cl: FlatbufferTable, hook_factory: Callable[[type[AttrsInstance]], Callable]
 ) -> Callable:
     """Compile a function to init an attrs model from a FB model, flattrs-style.
 
@@ -498,40 +498,6 @@ def make_from_fb_fn(
     )
 
     return globs["__fb_from_fb__"]
-
-
-def make_from_bytes_flattrs_fn(cl) -> Callable:
-    """Compile a function to load this model from Flatbuffer bytes."""
-    import struct
-
-    from flatbuffers.table import Table
-
-    name = cl.__name__
-    globs = {
-        "Table": Table,
-        "uint32": struct.Struct("<I"),
-    }
-    lines = []
-    lines.append("@classmethod")
-    lines.append("def __fb_from_bytes__(cls, data: bytes):")
-    lines.append("    start_offset = uint32.unpack_from(data, 0)[0]")
-    lines.append("    return cls.__fb_from_fb__(Table(data, start_offset))")
-
-    lines.append("")
-    sha1 = hashlib.sha1()
-    sha1.update(name.encode("utf-8"))
-    unique_filename = "<FB from_bytes for %s, %s>" % (name, sha1.hexdigest())
-    script = "\n".join(lines)
-    eval(compile(script, unique_filename, "exec"), globs)
-
-    linecache.cache[unique_filename] = (
-        len(script),
-        None,
-        script.splitlines(True),
-        unique_filename,
-    )
-
-    return globs["__fb_from_bytes__"]
 
 
 SCALAR_TYPE_TO_PREPEND: Final[dict[ScalarType, str]] = {

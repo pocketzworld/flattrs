@@ -1,7 +1,7 @@
 from enum import IntEnum
 
-import flattrs_test
-from flattrs_test.ASimpleUByteEnum import ASimpleUByteEnum
+from flatc import flattrs_test
+from flatc.flattrs_test.ASimpleUByteEnum import ASimpleUByteEnum
 from tests import FlatbufferEnum, from_package, from_package_enum
 
 

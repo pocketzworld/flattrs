@@ -38,7 +38,7 @@ from .typing import (
 
 
 @frozen
-class FlatbufferClass:
+class FlatbufferTable:
     cl: type[AttrsInstance]
     num_slots: int
     inlines: list[FieldName, ScalarType, SlotNumber, MaybeDefault]
@@ -62,7 +62,7 @@ def analyze(
     field_overrides: list[tuple[FieldName, ScalarType, MaybeDefault]] = [],
     scalar_list_overrides: list[tuple[FieldName, ScalarType]] = [],
     union_overrides: dict[FieldName, UnionMapping] = {},
-) -> FlatbufferClass:
+) -> FlatbufferTable:
     resolve_types(cl)
     strings: list[tuple[FieldName, SlotNumber, Optionality]] = []
     byte_fields: list[tuple[FieldName, SlotNumber, Optionality]] = []
@@ -200,8 +200,6 @@ def analyze(
                 )
             else:
                 raise TypeError(f"Cannot handle {field.name} {ftype}")
-        elif is_annotated_with(ftype, Float):
-            inlines.append((field.name, "Float32", next_slot_idx, field.default))
         elif is_subclass(ftype, Enum) and is_subclass(
             ftype, int
         ):  # Enums before scalars, since IntEnum is a subclass of int.
@@ -229,7 +227,7 @@ def analyze(
             raise TypeError(f"Cannot handle {ftype}")
 
         next_slot_idx += 1
-    return FlatbufferClass(
+    return FlatbufferTable(
         cl,
         next_slot_idx,
         inlines,

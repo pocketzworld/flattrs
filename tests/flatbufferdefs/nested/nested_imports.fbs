@@ -1,4 +1,5 @@
 include "geometry/Vec3.fbs";
+include "common.fbs";
 
 // Try including something that's from a level above.
 

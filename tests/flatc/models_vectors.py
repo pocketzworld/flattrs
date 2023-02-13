@@ -1,17 +1,17 @@
 from attrs import field
 
-import flattrs_test
-from flattrs_test.ByteArrayTable import ByteArrayTable
-from flattrs_test.OptionalByteArrayTable import OptionalByteArrayTable
-from flattrs_test.OptionalVectorsOfScalars import OptionalVectorsOfScalars
-from flattrs_test.OptVectorOfEnums import OptVectorOfEnums
-from flattrs_test.VectorOfCommon1 import VectorOfCommon1
-from flattrs_test.VectorOfEnums import VectorOfEnums
-from flattrs_test.VectorOfOptionalCommon1 import VectorOfOptionalCommon1
-from flattrs_test.VectorsOfBools import VectorsOfBools
-from flattrs_test.VectorsOfFloats import VectorsOfFloats
-from flattrs_test.VectorsOfInts import VectorsOfInts
-from flattrs_test.VectorsOfScalars import VectorsOfScalars
+import flatc
+from flatc.ByteArrayTable import ByteArrayTable
+from flatc.OptionalByteArrayTable import OptionalByteArrayTable
+from flatc.OptionalVectorsOfScalars import OptionalVectorsOfScalars
+from flatc.OptVectorOfEnums import OptVectorOfEnums
+from flatc.VectorOfCommon1 import VectorOfCommon1
+from flatc.VectorOfEnums import VectorOfEnums
+from flatc.VectorOfOptionalCommon1 import VectorOfOptionalCommon1
+from flatc.VectorsOfBools import VectorsOfBools
+from flatc.VectorsOfFloats import VectorsOfFloats
+from flatc.VectorsOfInts import VectorsOfInts
+from flatc.VectorsOfScalars import VectorsOfScalars
 from tests import Flatbuffer, from_package
 
 from .models_common import Common1
@@ -132,12 +132,12 @@ class OptVectorOfEnums:
 #     strings: Sequence[str] = attr.ib()
 
 
-@from_package(flattrs_test)
+@from_package(flatc)
 class VectorOfStrings:
     strings: list[str]
 
 
-@from_package(flattrs_test)
+@from_package(flatc)
 class OptionalVectorOfStrings:
     strings: list[str] | None
 

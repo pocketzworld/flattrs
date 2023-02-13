@@ -31,7 +31,7 @@ class VectorOfCommon1(object):
             x = self._tab.Vector(o)
             x += flatbuffers.number_types.UOffsetTFlags.py_type(j) * 4
             x = self._tab.Indirect(x)
-            from flattrs_test.Common1 import Common1
+            from flatc.flattrs_test.Common1 import Common1
             obj = Common1()
             obj.Init(self._tab.Bytes, x)
             return obj

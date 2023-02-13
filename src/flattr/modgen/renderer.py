@@ -3,11 +3,11 @@ from pathlib import Path
 from traceback import print_exception
 from typing import Final, TypeAlias
 
-from attrs import define, evolve
+from attrs import Factory, define, evolve, frozen
 from lark import ParseTree, Token, Tree
 from lark.visitors import Interpreter
 
-from .._types import Optionality
+from .._types import FieldName, Optionality
 from .parser import parser
 
 Imports: TypeAlias = dict[str, set[str]]
@@ -16,15 +16,26 @@ ImportableName: TypeAlias = str
 MISSING: Final = "$MISSING"
 
 
+@frozen
+class Attribute:
+    name: str
+    value: str | None = None
+    namespace: str | None = MISSING
+
+
+BUILTIN_ATTRS = {"required", "deprecated"}
+
+
 @define
 class Table:
     @define
     class Field:
-        name: str
+        name: FieldName
         type: str
         default: str
         is_optional: Optionality
         namespace_prefix: str | None = None
+        attrs: list[Attribute] = Factory(list)
 
     name: ImportableName
     field_defs: list[Field]
@@ -174,6 +185,7 @@ class FlatbufferRenderer(Interpreter):
             self.visit(t)
             for t in tree.find_pred(lambda t: t.data in ("table", "enum", "union"))
         ]
+        print(importables)
         imports = {}
         lines = []
 
@@ -256,7 +268,17 @@ class FlatbufferRenderer(Interpreter):
             name,
             Table(
                 name,
-                [Table.Field(f[0], f[1], f[2], f[3], f[5] or None) for f in field_defs],
+                [
+                    Table.Field(
+                        f[0],
+                        f[1],
+                        f[2],
+                        Attribute("required", namespace=MISSING) not in f[3],
+                        f[5] or None,
+                        f[3],
+                    )
+                    for f in field_defs
+                ],
                 imports,
             ),
             imports,
@@ -264,16 +286,14 @@ class FlatbufferRenderer(Interpreter):
 
     def table_field(
         self, tree: ParseTree
-    ) -> tuple[str, str, str, Optionality, Imports, str]:
+    ) -> tuple[FieldName, str, str, list[Attribute], Imports, str]:
         imports = {}
         name = str(tree.children[0])
         full_type = tree.children[1]
-        is_required = False
+        attributes = []
         for attr_tree in tree.find_data("table_field_attributes"):
-            if "required" in attr_tree.children:
-                is_required = True
-                break
-
+            for c in attr_tree.children:
+                attributes.append(Attribute(str(c)))
         is_scalar = False
         namespace_prefix = ""
         if full_type == "string":
@@ -311,7 +331,7 @@ class FlatbufferRenderer(Interpreter):
                 pass
             else:
                 # A scalar.
-                is_required = True
+                attributes.append(Attribute("required"))
                 type = full_type.children[0]
                 if type.lower() in TYPE_MAP:
                     is_scalar = True
@@ -329,7 +349,7 @@ class FlatbufferRenderer(Interpreter):
                         def_val = f"{type}.{def_val}"
                     default = def_val
 
-        return name, type, default, not is_required, imports, namespace_prefix
+        return name, type, default, attributes, imports, namespace_prefix
 
     def table_field_default(self):
         pass

@@ -7,7 +7,7 @@ from tests import FlatbufferEnum
 
 
 def test_enum_name_mismatch() -> None:
-    from flattrs_test.ASimpleUByteEnum import ASimpleUByteEnum
+    from flatc.flattrs_test.ASimpleUByteEnum import ASimpleUByteEnum
 
     with pytest.raises(ValueError):
 
@@ -18,7 +18,7 @@ def test_enum_name_mismatch() -> None:
 
 
 def test_enum_member_name_mismatch() -> None:
-    from flattrs_test.ASimpleUByteEnum import ASimpleUByteEnum
+    from flatc.flattrs_test.ASimpleUByteEnum import ASimpleUByteEnum
 
     with pytest.raises(ValueError):
 

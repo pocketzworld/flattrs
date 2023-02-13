@@ -1,5 +1,5 @@
-import flattrs_test
-from flattrs_test.AllScalarsWithDefaults import AllScalarsWithDefaults
+from flatc import flattrs_test
+from flatc.flattrs_test.AllScalarsWithDefaults import AllScalarsWithDefaults
 from tests import Flatbuffer, from_package
 
 
