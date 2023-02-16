@@ -1,62 +1,35 @@
 from hypothesis import given
-from hypothesis.strategies import DrawFn, booleans, composite, sampled_from, text
+from hypothesis.strategies import none, text
 
-from flattr import model_from_bytes, model_to_bytes
+from flattr import dumps, loads
 
-from .models_nested import NestedJustAString
-from .models_unions import (
+from .models.nested.nested_trivial import NestedJustAString
+from .models.tableswithtables import (
     NumberedUnionTable,
     UnionOfNestedTables,
     UnionOfOptionalTables,
 )
 from .test_common import all_scalars, all_scalars_with_defaults, common1s
 
-
-@composite
-def unions_of_nested_tables(draw: DrawFn) -> UnionOfNestedTables:
-    if draw(booleans()):
-        inner = draw(common1s)
-    else:
-        inner = NestedJustAString(draw(text()))
-    return UnionOfNestedTables(inner)
-
-
-@composite
-def unions_of_optional_tables(draw: DrawFn) -> UnionOfOptionalTables:
-    if draw(booleans()):
-        inner = draw(common1s)
-    else:
-        if draw(booleans()):
-            inner = NestedJustAString(draw(text()))
-        else:
-            inner = None
-    return UnionOfOptionalTables(inner)
+unions_of_nested_tables = (common1s | text().map(NestedJustAString)).map(
+    UnionOfNestedTables
+)
+unions_of_optional_tables = (common1s | none()).map(UnionOfOptionalTables)
+numbered_union_tables = (
+    none() | common1s | all_scalars() | all_scalars_with_defaults()
+).map(NumberedUnionTable)
 
 
-@composite
-def numbered_union_tables(draw: DrawFn) -> NumberedUnionTable:
-    which = draw(sampled_from([0, 1, 2, 3]))
-    if which == 0:
-        inner = None
-    elif which == 1:
-        inner = draw(common1s)
-    elif which == 2:
-        inner = draw(all_scalars())
-    else:
-        inner = draw(all_scalars_with_defaults())
-    return NumberedUnionTable(inner)
-
-
-@given(unions_of_nested_tables())
+@given(unions_of_nested_tables)
 def test_unions_of_nested_tables(inst: UnionOfNestedTables) -> None:
-    assert inst == model_from_bytes(inst.__class__, model_to_bytes(inst))
+    assert inst == loads(dumps(inst), inst.__class__)
 
 
-@given(unions_of_optional_tables())
-def test_unions_of_optional_tables(inst):
-    assert inst == model_from_bytes(inst.__class__, model_to_bytes(inst))
+@given(unions_of_optional_tables)
+def test_unions_of_optional_tables(inst: UnionOfOptionalTables) -> None:
+    assert inst == loads(dumps(inst), inst.__class__)
 
 
-@given(numbered_union_tables())
+@given(numbered_union_tables)
 def test_unions_of_numbered_unions(inst: NumberedUnionTable) -> None:
-    assert inst == model_from_bytes(inst.__class__, model_to_bytes(inst))
+    assert inst == loads(dumps(inst), inst.__class__)

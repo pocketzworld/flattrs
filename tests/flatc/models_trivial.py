@@ -1,14 +1,15 @@
 import attr
+from attrs import field
 
-import flattrs_test
-from flattr import Flatbuffer
-from flattrs_test.HasCaps import HasCaps
-from flattrs_test.JustADouble import JustADouble
-from flattrs_test.JustAFloat import JustAFloat
-from flattrs_test.JustAnOptionalString import JustAnOptionalString
-from flattrs_test.JustAString import JustAString
-from flattrs_test.JustBytes import JustBytes
-from flattrs_test.JustOptionalBytes import JustOptionalBytes
+from flatc import flattrs_test
+from flatc.flattrs_test.HasCaps import HasCaps
+from flatc.flattrs_test.JustADouble import JustADouble
+from flatc.flattrs_test.JustAFloat import JustAFloat
+from flatc.flattrs_test.JustAnOptionalString import JustAnOptionalString
+from flatc.flattrs_test.JustAString import JustAString
+from flatc.flattrs_test.JustBytes import JustBytes
+from flatc.flattrs_test.JustOptionalBytes import JustOptionalBytes
+from tests import Flatbuffer
 
 from .models_enums import ASimpleByteEnum
 
@@ -30,7 +31,7 @@ class JustBytes:
 
 @Flatbuffer(JustOptionalBytes)
 class JustOptionalBytes:
-    value: bytes | None
+    value: bytes | None = field(repr=False)
 
 
 @Flatbuffer(JustAFloat)
@@ -52,3 +53,4 @@ class JustAnEnum:
 class HasCaps:
     fieldCAPS: str
     fieldCAPSInMiddle: str
+    aBc: str

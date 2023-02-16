@@ -1,16 +1,18 @@
 from __future__ import annotations
 
-from flattr import Float32, Int8, Int16, Int32, Uint8, Uint16, Uint32, Uint64, flattrs
+from attrs import define
+
+from flattr import Float32, Int8, Int16, Int32, Uint8, Uint16, Uint32, Uint64
 
 
-@flattrs
+@define
 class Common1:
     id: str
     aSmallInt: Uint8
     aBigInt: Int32
 
 
-@flattrs
+@define
 class AllScalars:
     boolean: bool
     uint8: Uint8
@@ -25,7 +27,7 @@ class AllScalars:
     float64: float
 
 
-@flattrs
+@define
 class AllScalarsWithDefaults:
     boolean: bool = True
     uint8: Uint8 = 1

@@ -1,19 +1,19 @@
 from __future__ import annotations
 
-from attrs import field
+from attrs import define, field
 
-from flattr import Float32, Int8, Int16, Int32, Uint16, Uint32, Uint64, flattrs
+from flattr import Float32, Int8, Int16, Int32, Uint16, Uint32, Uint64
 
 from .common import Common1
 from .enums import ASimpleUByteEnum
 
 
-@flattrs
+@define
 class VectorsOfBools:
     vec_of_bools: list[bool]
 
 
-@flattrs
+@define
 class VectorsOfInts:
     vecOfInt8s: list[Int8]
     vecOfInt16s: list[Int16]
@@ -21,13 +21,13 @@ class VectorsOfInts:
     vecOfInt64s: list[int]
 
 
-@flattrs
+@define
 class VectorsOfFloats:
     vecOfFloat32s: list[Float32]
     vecOfFloat64s: list[float]
 
 
-@flattrs
+@define
 class VectorsOfScalars:
     vecOfBools: list[bool]
     vecOfUint8s: bytes = field(repr=False)
@@ -42,7 +42,7 @@ class VectorsOfScalars:
     vecOfFloat64s: list[float]
 
 
-@flattrs
+@define
 class OptionalVectorsOfScalars:
     vecOfBools: list[bool] | None = None
     vecOfUint8s: bytes | None = field(default=None, repr=False)
@@ -57,7 +57,7 @@ class OptionalVectorsOfScalars:
     vecOfFloat64s: list[float] | None = None
 
 
-@flattrs
+@define
 class SeqVectorsOfScalars:
     vecOfBools: list[bool] | None = None
     vecOfUint8s: bytes | None = field(default=None, repr=False)
@@ -72,66 +72,66 @@ class SeqVectorsOfScalars:
     vecOfFloat64s: list[float] | None = None
 
 
-@flattrs
+@define
 class VectorOfCommon1:
     vecOfCommon: list[Common1]
 
 
-@flattrs
+@define
 class SeqVectorOfCommon1:
     vecOfCommon: list[Common1] | None = None
 
 
-@flattrs
+@define
 class ByteArrayTable:
     contents: bytes = field(repr=False)
 
 
-@flattrs
+@define
 class OptionalByteArrayTable:
     contents: bytes | None = field(default=None, repr=False)
 
 
-@flattrs
+@define
 class VectorOfEnums:
     enums: list[ASimpleUByteEnum]
 
 
-@flattrs
+@define
 class OptVectorOfEnums:
     enums: list[ASimpleUByteEnum] | None = None
 
 
-@flattrs
+@define
 class SeqVectorOfEnums:
     enums: list[ASimpleUByteEnum] | None = None
 
 
-@flattrs
+@define
 class SeqVectorOfStrings:
     strings: list[str]
 
 
-@flattrs
+@define
 class VectorOfStrings:
     strings: list[str]
 
 
-@flattrs
+@define
 class OptionalVectorOfStrings:
     strings: list[str] | None = None
 
 
-@flattrs
+@define
 class OptionalSeqVectorOfStrings:
     strings: list[str] | None = None
 
 
-@flattrs
+@define
 class VectorOfOptionalCommon1:
     vecOfCommon: list[Common1] | None = None
 
 
-@flattrs
+@define
 class SeqVectorOfOptionalCommon1:
     vecOfCommon: list[Common1] | None = None

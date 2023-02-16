@@ -2,10 +2,10 @@ from typing import Optional, Union
 
 import attr
 
-import flattrs_test
-from flattr import UNION_CL, Flatbuffer, from_package
-from flattrs_test.CommonUnion import CommonUnion
-from flattrs_test.UnionOfTables import UnionOfTables
+from flatc import flattrs_test
+from flatc.flattrs_test.CommonUnion import CommonUnion
+from flatc.flattrs_test.UnionOfTables import UnionOfTables
+from tests import UNION_CL, Flatbuffer, from_package
 
 from .models_common import AllScalars, Common1
 
@@ -20,6 +20,6 @@ class OptionalTable:
     inner: Common1 | None
 
 
-# @Flatbuffer(UnionOfTables)
-# class UnionOfTables:
-#     innerUnion: Union[Common1, AllScalars] = attr.ib(metadata={UNION_CL: CommonUnion})
+@Flatbuffer(UnionOfTables)
+class UnionOfTables:
+    innerUnion: Union[Common1, AllScalars] = attr.ib(metadata={UNION_CL: CommonUnion})

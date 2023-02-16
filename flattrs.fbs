@@ -1,0 +1,7 @@
+namespace flattrs;
+
+// Skip generating a repr for this field.
+attribute "norepr";
+
+// Make the table or field immutable/frozen.
+attribute "immutable";

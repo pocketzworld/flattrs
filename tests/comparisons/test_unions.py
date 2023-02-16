@@ -3,12 +3,13 @@ from attrs import asdict
 from cattrs import structure, unstructure
 from hypothesis import given
 
-from flattr import model_from_bytes, model_to_bytes
+from flattr import dumps, loads
+from tests import model_from_bytes, model_to_bytes
 
 from ..flatc import models_unions as models_unions_flatc
 from ..flatc.test_unions import numbered_union_tables, unions_of_nested_tables
-from ..flattrs import models_unions as models_unions_flattrs
 from ..flattrs.models import common as models_common_flattrs
+from ..flattrs.models import tableswithtables as models_unions_flattrs
 
 
 @given(
@@ -24,18 +25,18 @@ def test_union_of_nested_tables(
         models_unions_flatc.UnionOfNestedTables,
         models_unions_flattrs.UnionOfNestedTables,
     ]
-):
+) -> None:
     flatc, flattrs = insts
     flatc_bytes = model_to_bytes(flatc)
-    flattrs_bytes = model_to_bytes(flattrs)
+    flattrs_bytes = dumps(flattrs)
     assert flatc_bytes == flattrs_bytes
 
     assert asdict(model_from_bytes(flatc.__class__, flattrs_bytes)) == asdict(
-        model_from_bytes(flattrs.__class__, flatc_bytes)
+        loads(flatc_bytes, flattrs.__class__)
     )
 
     assert repr(model_from_bytes(flatc.__class__, flatc_bytes)) == repr(
-        model_from_bytes(flattrs.__class__, flatc_bytes)
+        loads(flatc_bytes, flattrs.__class__)
     )
 
 
@@ -62,16 +63,16 @@ def test_numbered_union_tables(
         models_unions_flatc.NumberedUnionTable,
         models_unions_flattrs.NumberedUnionTable,
     ]
-):
+) -> None:
     flatc, flattrs = insts
     flatc_bytes = model_to_bytes(flatc)
-    flattrs_bytes = model_to_bytes(flattrs)
+    flattrs_bytes = dumps(flattrs)
     assert flatc_bytes == flattrs_bytes
 
     assert asdict(model_from_bytes(flatc.__class__, flattrs_bytes)) == asdict(
-        model_from_bytes(flattrs.__class__, flatc_bytes)
+        loads(flatc_bytes, flattrs.__class__)
     )
 
     assert repr(model_from_bytes(flatc.__class__, flatc_bytes)) == repr(
-        model_from_bytes(flattrs.__class__, flatc_bytes)
+        loads(flatc_bytes, flattrs.__class__)
     )

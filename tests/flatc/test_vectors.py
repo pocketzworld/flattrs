@@ -11,7 +11,7 @@ from hypothesis.strategies import (
     tuples,
 )
 
-from flattr import model_from_bytes, model_to_bytes
+from tests import model_from_bytes, model_to_bytes
 
 from ..strats import (
     float32s,
@@ -60,7 +60,7 @@ vectors_of_floats = tuples(lists(float32s), lists(float64s)).map(
 def vectors_of_scalars(draw: DrawFn) -> VectorsOfScalars:
     return VectorsOfScalars(
         draw(lists(booleans())),
-        draw(lists(uint8s)),
+        draw(binary()),
         draw(lists(uint16s)),
         draw(lists(uint32s)),
         draw(lists(uint64s)),
@@ -77,7 +77,7 @@ def vectors_of_scalars(draw: DrawFn) -> VectorsOfScalars:
 def optional_vectors_of_scalars(draw):
     return OptionalVectorsOfScalars(
         draw(lists(booleans()) | none()),
-        draw(lists(uint8s) | none()),
+        draw(binary() | none()),
         draw(lists(uint16s) | none()),
         draw(lists(uint32s) | none()),
         draw(lists(uint64s) | none()),

@@ -33,6 +33,7 @@ setup(
             "cattrs",
             "nox",
             "numpy",
+            "black==23.1.0",
             "isort",
         ]
     },

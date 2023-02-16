@@ -1,16 +1,18 @@
-import flattrs_test
-from flattr import Flatbuffer, from_package
-from flattrs_test.ByteArrayTable import ByteArrayTable
-from flattrs_test.OptionalByteArrayTable import OptionalByteArrayTable
-from flattrs_test.OptionalVectorsOfScalars import OptionalVectorsOfScalars
-from flattrs_test.OptVectorOfEnums import OptVectorOfEnums
-from flattrs_test.VectorOfCommon1 import VectorOfCommon1
-from flattrs_test.VectorOfEnums import VectorOfEnums
-from flattrs_test.VectorOfOptionalCommon1 import VectorOfOptionalCommon1
-from flattrs_test.VectorsOfBools import VectorsOfBools
-from flattrs_test.VectorsOfFloats import VectorsOfFloats
-from flattrs_test.VectorsOfInts import VectorsOfInts
-from flattrs_test.VectorsOfScalars import VectorsOfScalars
+from attrs import field
+
+import flatc
+from flatc.ByteArrayTable import ByteArrayTable
+from flatc.OptionalByteArrayTable import OptionalByteArrayTable
+from flatc.OptionalVectorsOfScalars import OptionalVectorsOfScalars
+from flatc.OptVectorOfEnums import OptVectorOfEnums
+from flatc.VectorOfCommon1 import VectorOfCommon1
+from flatc.VectorOfEnums import VectorOfEnums
+from flatc.VectorOfOptionalCommon1 import VectorOfOptionalCommon1
+from flatc.VectorsOfBools import VectorsOfBools
+from flatc.VectorsOfFloats import VectorsOfFloats
+from flatc.VectorsOfInts import VectorsOfInts
+from flatc.VectorsOfScalars import VectorsOfScalars
+from tests import Flatbuffer, from_package
 
 from .models_common import Common1
 from .models_enums import ASimpleUByteEnum
@@ -18,7 +20,7 @@ from .models_enums import ASimpleUByteEnum
 
 @Flatbuffer(VectorsOfBools)
 class VectorsOfBools:
-    vecOfBools: list[bool]
+    vec_of_bools: list[bool]
 
 
 @Flatbuffer(VectorsOfInts)
@@ -38,7 +40,7 @@ class VectorsOfFloats:
 @Flatbuffer(VectorsOfScalars)
 class VectorsOfScalars:
     vecOfBools: list[bool]
-    vecOfUint8s: list[int]
+    vecOfUint8s: bytes = field(repr=False)
     vecOfUint16s: list[int]
     vecOfUint32s: list[int]
     vecOfUint64s: list[int]
@@ -53,7 +55,7 @@ class VectorsOfScalars:
 @Flatbuffer(OptionalVectorsOfScalars)
 class OptionalVectorsOfScalars:
     vecOfBools: list[bool] | None
-    vecOfUint8s: list[int] | None
+    vecOfUint8s: bytes | None = field(repr=False)
     vecOfUint16s: list[int] | None
     vecOfUint32s: list[int] | None
     vecOfUint64s: list[int] | None
@@ -102,12 +104,12 @@ class VectorOfOptionalCommon1:
 
 @Flatbuffer(ByteArrayTable)
 class ByteArrayTable:
-    contents: bytes
+    contents: bytes = field(repr=False)
 
 
 @Flatbuffer(OptionalByteArrayTable)
 class OptionalByteArrayTable:
-    contents: bytes | None
+    contents: bytes | None = field(repr=False)
 
 
 @Flatbuffer(VectorOfEnums)
@@ -130,12 +132,12 @@ class OptVectorOfEnums:
 #     strings: Sequence[str] = attr.ib()
 
 
-@from_package(flattrs_test)
+@from_package(flatc)
 class VectorOfStrings:
     strings: list[str]
 
 
-@from_package(flattrs_test)
+@from_package(flatc)
 class OptionalVectorOfStrings:
     strings: list[str] | None
 

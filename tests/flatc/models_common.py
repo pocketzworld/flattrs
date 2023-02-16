@@ -1,6 +1,6 @@
-import flattrs_test
-from flattr import Flatbuffer, from_package
-from flattrs_test.AllScalarsWithDefaults import AllScalarsWithDefaults
+from flatc import flattrs_test
+from flatc.flattrs_test.AllScalarsWithDefaults import AllScalarsWithDefaults
+from tests import Flatbuffer, from_package
 
 
 @Flatbuffer.from_package(flattrs_test)

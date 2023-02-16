@@ -1,8 +1,8 @@
 from __future__ import annotations
 
-from flattr import flattrs
+from attrs import define
 
 
-@flattrs
+@define
 class NestedJustAString:
     id: str

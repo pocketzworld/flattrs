@@ -14,7 +14,7 @@ from .types import (
     Uint64,
 )
 
-UNION_CL: Final = "__fb_union_cl"
+NoneType = type(None)
 
 SCALAR_TYPE_TO_PYTHON: Final[dict[ScalarType, type]] = {
     "Uint8": int,

@@ -1,7 +1,7 @@
 from hypothesis import given
 from hypothesis.strategies import DrawFn, booleans, composite, sampled_from, text
 
-from flattr import model_from_bytes, model_to_bytes
+from tests import model_from_bytes, model_to_bytes
 
 from .models_nested import NestedJustAString
 from .models_unions import (

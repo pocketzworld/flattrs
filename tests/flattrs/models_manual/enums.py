@@ -2,6 +2,8 @@ from __future__ import annotations
 
 from enum import IntEnum
 
+from attrs import define
+
 from flattr import (
     Int8Enum,
     Int16Enum,
@@ -10,7 +12,6 @@ from flattr import (
     Uint16Enum,
     Uint32Enum,
     Uint64Enum,
-    flattrs,
 )
 
 
@@ -64,7 +65,7 @@ class AnInt64Enum(IntEnum):
     TWENTY = -40000000000
 
 
-@flattrs
+@define
 class AllEnums:
     simple_ubyte: ASimpleUByteEnum
     simple_byte: ASimpleByteEnum

@@ -2,12 +2,12 @@ from typing import Union
 
 from attrs import field
 
-from flattr import UNION_CL, Flatbuffer
-from flattrs_test.NestedUnion import NestedUnion
-from flattrs_test.NumberedUnion import NumberedUnion
-from flattrs_test.NumberedUnionTable import NumberedUnionTable
-from flattrs_test.UnionOfNestedTables import UnionOfNestedTables
-from flattrs_test.UnionOfOptionalTables import UnionOfOptionalTables
+from flatc.flattrs_test.NestedUnion import NestedUnion
+from flatc.flattrs_test.NumberedUnion import NumberedUnion
+from flatc.flattrs_test.NumberedUnionTable import NumberedUnionTable
+from flatc.flattrs_test.UnionOfNestedTables import UnionOfNestedTables
+from flatc.flattrs_test.UnionOfOptionalTables import UnionOfOptionalTables
+from tests import UNION_CL, Flatbuffer
 
 from .models_common import AllScalars, AllScalarsWithDefaults, Common1
 from .models_nested import NestedJustAString

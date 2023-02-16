@@ -3,7 +3,8 @@ from attrs import asdict
 from hypothesis import given
 from hypothesis.strategies import text, tuples
 
-from flattr import model_from_bytes, model_to_bytes
+from flattr import dumps, loads
+from tests import model_from_bytes, model_to_bytes
 
 from ..flatc import models_common as models_common_flatc
 from ..flatc.test_common import all_scalars, all_scalars_with_defaults
@@ -21,15 +22,15 @@ def test_common1(
 ) -> None:
     flatc, flattrs = insts
     flatc_bytes = model_to_bytes(flatc)
-    flattrs_bytes = model_to_bytes(flattrs)
+    flattrs_bytes = dumps(flattrs)
     assert flatc_bytes == flattrs_bytes
 
     assert asdict(model_from_bytes(flatc.__class__, flattrs_bytes)) == asdict(
-        model_from_bytes(flattrs.__class__, flatc_bytes)
+        loads(flatc_bytes, flattrs.__class__)
     )
 
     assert repr(model_from_bytes(flatc.__class__, flatc_bytes)) == repr(
-        model_from_bytes(flattrs.__class__, flatc_bytes)
+        loads(flatc_bytes, flattrs.__class__)
     )
 
 
@@ -39,15 +40,15 @@ def test_all_scalars(
 ) -> None:
     flatc, flattrs = insts
     flatc_bytes = model_to_bytes(flatc)
-    flattrs_bytes = model_to_bytes(flattrs)
+    flattrs_bytes = dumps(flattrs)
     assert flatc_bytes == flattrs_bytes
 
     assert asdict(model_from_bytes(flatc.__class__, flattrs_bytes)) == asdict(
-        model_from_bytes(flattrs.__class__, flatc_bytes)
+        loads(flatc_bytes, flattrs.__class__)
     )
 
     assert repr(model_from_bytes(flatc.__class__, flatc_bytes)) == repr(
-        model_from_bytes(flattrs.__class__, flatc_bytes)
+        loads(flatc_bytes, flattrs.__class__)
     )
 
 
@@ -64,13 +65,13 @@ def test_all_scalars_with_defaults(
 ) -> None:
     flatc, flattrs = insts
     flatc_bytes = model_to_bytes(flatc)
-    flattrs_bytes = model_to_bytes(flattrs)
+    flattrs_bytes = dumps(flattrs)
     assert flatc_bytes == flattrs_bytes
 
     assert asdict(model_from_bytes(flatc.__class__, flattrs_bytes)) == asdict(
-        model_from_bytes(flattrs.__class__, flatc_bytes)
+        loads(flatc_bytes, flattrs.__class__)
     )
 
     assert repr(model_from_bytes(flatc.__class__, flatc_bytes)) == repr(
-        model_from_bytes(flattrs.__class__, flatc_bytes)
+        loads(flatc_bytes, flattrs.__class__)
     )

@@ -2,7 +2,7 @@
 from hypothesis import given
 from hypothesis.strategies import sampled_from, tuples
 
-from flattr import model_from_bytes, model_to_bytes
+from flattr import dumps, loads
 
 from .models.enums import (
     AllEnums,
@@ -34,4 +34,4 @@ all_enums = tuples(
 
 @given(all_enums)
 def test_all_enums(inst: AllEnums) -> None:
-    assert inst == model_from_bytes(inst.__class__, model_to_bytes(inst))
+    assert inst == loads(dumps(inst), inst.__class__)

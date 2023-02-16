@@ -28,13 +28,15 @@ enum: "enum" NAME ":" INT_TYPES "{" [ enum_field ("," enum_field)*] ","? "}"
 enum_field: NAME enum_field_default?
 enum_field_default: "=" NUMBER
 
-table: "table" NAME "{" table_field* "}"
-table_field: NAME ":" (scalar_type | vector_type | NAMESPACED_NAME) table_field_default? table_field_attributes? ";"
+table: "table" NAME attributes? "{" table_field* "}"
+table_field: NAME ":" (scalar_type | vector_type | NAMESPACED_NAME) table_field_default? attributes? ";"
 table_field_default: "=" (NAMESPACED_NAME | NUMBER)
-table_field_attributes: "(" [WORD ("," WORD)*] ")"
+attributes: "(" [WORD ("," WORD)*] ")"
 
 union: "union" NAME "{" [union_member ("," union_member ","?)*] "}"
 union_member: NAMESPACED_NAME ("=" DECIMAL_POSITIVE_INTEGER)?
+
+attribute: "attribute \"" NAME "\"" ";"
 
 BOOL_TYPE: "bool"
 INT_TYPES: "u"? "int" ("8"|"16"|"32"|"64")? | "ubyte" | "ushort" | "ulong"
@@ -44,7 +46,7 @@ STRING_TYPE: "string"
 scalar_type: BOOL_TYPE | INT_TYPES | FLOAT_TYPES
 vector_type: "[" NAMESPACED_NAME "]"
 
-module: include* namespace? (table | enum | union)* root_type?
+module: include* namespace? (table | enum | union | attribute)* root_type?
 
 %import common.SIGNED_NUMBER -> NUMBER
 %import common.WS

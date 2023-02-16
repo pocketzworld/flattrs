@@ -1,10 +1,10 @@
 from __future__ import annotations
 
-from flattr import flattrs
+from attrs import define
 
 from .geometry.Vec3 import Vec3
 
 
-@flattrs
+@define
 class Includes:
     vec3: Vec3

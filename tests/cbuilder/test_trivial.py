@@ -1,6 +1,6 @@
 from hypothesis import given
 
-from flattr import model_to_bytes
+from tests import model_to_bytes
 
 from ..flatc.test_trivial import just_a_doubles, just_a_floats, just_a_strings
 from ..flatc.test_vectors import vectors_of_strings

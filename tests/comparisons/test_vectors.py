@@ -1,19 +1,10 @@
 from attrs import asdict
 from cattrs import structure, unstructure
 from hypothesis import given
-from hypothesis.strategies import (
-    DrawFn,
-    binary,
-    booleans,
-    composite,
-    lists,
-    none,
-    sampled_from,
-    text,
-    tuples,
-)
+from hypothesis.strategies import booleans, lists, tuples
 
-from flattr import model_from_bytes, model_to_bytes
+from flattr import dumps, loads
+from tests import model_from_bytes, model_to_bytes
 
 from ..flatc import models_vectors as models_vectors_flatc
 from ..flatc.test_vectors import (
@@ -28,7 +19,7 @@ from ..flatc.test_vectors import (
     vectors_of_scalars,
     vectors_of_strings,
 )
-from ..flattrs import models_vectors as models_vectors_flattrs
+from ..flattrs.models import vectors as models_vectors_flattrs
 from ..strats import int8s, int16s, int32s, int64s
 
 
@@ -47,15 +38,15 @@ def test_vectors_of_bools(
 ):
     flatc, flattrs = insts
     flatc_bytes = model_to_bytes(flatc)
-    flattrs_bytes = model_to_bytes(flattrs)
+    flattrs_bytes = dumps(flattrs)
     assert flatc_bytes == flattrs_bytes
 
     assert asdict(model_from_bytes(flatc.__class__, flattrs_bytes)) == asdict(
-        model_from_bytes(flattrs.__class__, flatc_bytes)
+        loads(flatc_bytes, flattrs.__class__)
     )
 
     assert repr(model_from_bytes(flatc.__class__, flatc_bytes)) == repr(
-        model_from_bytes(flattrs.__class__, flatc_bytes)
+        loads(flatc_bytes, flattrs.__class__)
     )
 
 
@@ -71,15 +62,15 @@ def test_vectors_of_floats(
 ) -> None:
     flatc, flattrs = insts
     flatc_bytes = model_to_bytes(flatc)
-    flattrs_bytes = model_to_bytes(flattrs)
+    flattrs_bytes = dumps(flattrs)
     assert flatc_bytes == flattrs_bytes
 
     assert asdict(model_from_bytes(flatc.__class__, flattrs_bytes)) == asdict(
-        model_from_bytes(flattrs.__class__, flatc_bytes)
+        loads(flatc_bytes, flattrs.__class__)
     )
 
     assert repr(model_from_bytes(flatc.__class__, flatc_bytes)) == repr(
-        model_from_bytes(flattrs.__class__, flatc_bytes)
+        loads(flatc_bytes, flattrs.__class__)
     )
 
 
@@ -98,15 +89,15 @@ def test_vectors_of_ints(
 ):
     flatc, flattrs = insts
     flatc_bytes = model_to_bytes(flatc)
-    flattrs_bytes = model_to_bytes(flattrs)
+    flattrs_bytes = dumps(flattrs)
     assert flatc_bytes == flattrs_bytes
 
     assert asdict(model_from_bytes(flatc.__class__, flatc_bytes)) == asdict(
-        model_from_bytes(flattrs.__class__, flatc_bytes)
+        loads(flatc_bytes, flattrs.__class__)
     )
 
     assert repr(model_from_bytes(flatc.__class__, flatc_bytes)) == repr(
-        model_from_bytes(flattrs.__class__, flatc_bytes)
+        loads(flatc_bytes, flattrs.__class__)
     )
 
 
@@ -122,15 +113,15 @@ def test_vectors_of_scalars(
 ):
     flatc, flattrs = insts
     flatc_bytes = model_to_bytes(flatc)
-    flattrs_bytes = model_to_bytes(flattrs)
+    flattrs_bytes = dumps(flattrs)
     assert flatc_bytes == flattrs_bytes
 
     assert asdict(model_from_bytes(flatc.__class__, flatc_bytes)) == asdict(
-        model_from_bytes(flattrs.__class__, flatc_bytes)
+        loads(flatc_bytes, flattrs.__class__)
     )
 
     assert repr(model_from_bytes(flatc.__class__, flatc_bytes)) == repr(
-        model_from_bytes(flattrs.__class__, flatc_bytes)
+        loads(flatc_bytes, flattrs.__class__)
     )
 
 
@@ -147,15 +138,15 @@ def test_vectors_of_scalars(
 ):
     flatc, flattrs = insts
     flatc_bytes = model_to_bytes(flatc)
-    flattrs_bytes = model_to_bytes(flattrs)
+    flattrs_bytes = dumps(flattrs)
     assert flatc_bytes == flattrs_bytes
 
     assert asdict(model_from_bytes(flatc.__class__, flatc_bytes)) == asdict(
-        model_from_bytes(flattrs.__class__, flatc_bytes)
+        loads(flatc_bytes, flattrs.__class__)
     )
 
     assert repr(model_from_bytes(flatc.__class__, flatc_bytes)) == repr(
-        model_from_bytes(flattrs.__class__, flatc_bytes)
+        loads(flatc_bytes, flattrs.__class__)
     )
 
 
@@ -172,15 +163,15 @@ def test_vectors_of_common1(
 ):
     flatc, flattrs = insts
     flatc_bytes = model_to_bytes(flatc)
-    flattrs_bytes = model_to_bytes(flattrs)
+    flattrs_bytes = dumps(flattrs)
     assert flatc_bytes == flattrs_bytes
 
     assert asdict(model_from_bytes(flatc.__class__, flatc_bytes)) == asdict(
-        model_from_bytes(flattrs.__class__, flatc_bytes)
+        loads(flatc_bytes, flattrs.__class__)
     )
 
     assert repr(model_from_bytes(flatc.__class__, flatc_bytes)) == repr(
-        model_from_bytes(flattrs.__class__, flatc_bytes)
+        loads(flatc_bytes, flattrs.__class__)
     )
 
 
@@ -200,15 +191,15 @@ def test_vectors_of_opt_common1(
 ):
     flatc, flattrs = insts
     flatc_bytes = model_to_bytes(flatc)
-    flattrs_bytes = model_to_bytes(flattrs)
+    flattrs_bytes = dumps(flattrs)
     assert flatc_bytes == flattrs_bytes
 
     assert asdict(model_from_bytes(flatc.__class__, flatc_bytes)) == asdict(
-        model_from_bytes(flattrs.__class__, flatc_bytes)
+        loads(flatc_bytes, flattrs.__class__)
     )
 
     assert repr(model_from_bytes(flatc.__class__, flatc_bytes)) == repr(
-        model_from_bytes(flattrs.__class__, flatc_bytes)
+        loads(flatc_bytes, flattrs.__class__)
     )
 
 
@@ -228,15 +219,15 @@ def test_bytearray_tables(
 ):
     flatc, flattrs = insts
     flatc_bytes = model_to_bytes(flatc)
-    flattrs_bytes = model_to_bytes(flattrs)
+    flattrs_bytes = dumps(flattrs)
     assert flatc_bytes == flattrs_bytes
 
     assert asdict(model_from_bytes(flatc.__class__, flatc_bytes)) == asdict(
-        model_from_bytes(flattrs.__class__, flatc_bytes)
+        loads(flatc_bytes, flattrs.__class__)
     )
 
     assert repr(model_from_bytes(flatc.__class__, flatc_bytes)) == repr(
-        model_from_bytes(flattrs.__class__, flatc_bytes)
+        loads(flatc_bytes, flattrs.__class__)
     )
 
 
@@ -256,15 +247,15 @@ def test_opt_bytearray_tables(
 ):
     flatc, flattrs = insts
     flatc_bytes = model_to_bytes(flatc)
-    flattrs_bytes = model_to_bytes(flattrs)
+    flattrs_bytes = dumps(flattrs)
     assert flatc_bytes == flattrs_bytes
 
     assert asdict(model_from_bytes(flatc.__class__, flatc_bytes)) == asdict(
-        model_from_bytes(flattrs.__class__, flatc_bytes)
+        loads(flatc_bytes, flattrs.__class__)
     )
 
     assert repr(model_from_bytes(flatc.__class__, flatc_bytes)) == repr(
-        model_from_bytes(flattrs.__class__, flatc_bytes)
+        loads(flatc_bytes, flattrs.__class__)
     )
 
 
@@ -276,7 +267,7 @@ def test_opt_bytearray_tables(
         )
     )
 )
-def test_opt_bytearray_tables(
+def test_vectors_of_enums(
     insts: tuple[
         models_vectors_flatc.VectorOfEnums,
         models_vectors_flattrs.VectorOfEnums,
@@ -284,15 +275,15 @@ def test_opt_bytearray_tables(
 ):
     flatc, flattrs = insts
     flatc_bytes = model_to_bytes(flatc)
-    flattrs_bytes = model_to_bytes(flattrs)
+    flattrs_bytes = dumps(flattrs)
     assert flatc_bytes == flattrs_bytes
 
     assert asdict(model_from_bytes(flatc.__class__, flatc_bytes)) == asdict(
-        model_from_bytes(flattrs.__class__, flatc_bytes)
+        loads(flatc_bytes, flattrs.__class__)
     )
 
     assert repr(model_from_bytes(flatc.__class__, flatc_bytes)) == repr(
-        model_from_bytes(flattrs.__class__, flatc_bytes)
+        loads(flatc_bytes, flattrs.__class__)
     )
 
 
@@ -312,15 +303,15 @@ def test_vectors_of_strings(
 ):
     flatc, flattrs = insts
     flatc_bytes = model_to_bytes(flatc)
-    flattrs_bytes = model_to_bytes(flattrs)
+    flattrs_bytes = dumps(flattrs)
     assert flatc_bytes == flattrs_bytes
 
     assert asdict(model_from_bytes(flatc.__class__, flatc_bytes)) == asdict(
-        model_from_bytes(flattrs.__class__, flatc_bytes)
+        loads(flatc_bytes, flattrs.__class__)
     )
 
     assert repr(model_from_bytes(flatc.__class__, flatc_bytes)) == repr(
-        model_from_bytes(flattrs.__class__, flatc_bytes)
+        loads(flatc_bytes, flattrs.__class__)
     )
 
 
@@ -340,13 +331,13 @@ def test_opt_vectors_of_strings(
 ) -> None:
     flatc, flattrs = insts
     flatc_bytes = model_to_bytes(flatc)
-    flattrs_bytes = model_to_bytes(flattrs)
+    flattrs_bytes = dumps(flattrs)
     assert flatc_bytes == flattrs_bytes
 
     assert asdict(model_from_bytes(flatc.__class__, flatc_bytes)) == asdict(
-        model_from_bytes(flattrs.__class__, flatc_bytes)
+        loads(flatc_bytes, flattrs.__class__)
     )
 
     assert repr(model_from_bytes(flatc.__class__, flatc_bytes)) == repr(
-        model_from_bytes(flattrs.__class__, flatc_bytes)
+        loads(flatc_bytes, flattrs.__class__)
     )

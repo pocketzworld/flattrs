@@ -3,11 +3,11 @@ from pathlib import Path
 from traceback import print_exception
 from typing import Final, TypeAlias
 
-from attrs import define, evolve
+from attrs import Factory, define, evolve, frozen
 from lark import ParseTree, Token, Tree
 from lark.visitors import Interpreter
 
-from .._types import Optionality
+from .._types import FieldName, Optionality
 from .parser import parser
 
 Imports: TypeAlias = dict[str, set[str]]
@@ -16,19 +16,33 @@ ImportableName: TypeAlias = str
 MISSING: Final = "$MISSING"
 
 
+@frozen
+class Attribute:
+    name: str
+    value: str | None = None
+    namespace: str | None = MISSING
+
+
+BUILTIN_ATTRS = {"required", "deprecated", "key"}
+NO_REPR = Attribute("norepr", namespace="flattrs")
+FROZEN = Attribute("immutable", namespace="flattrs")
+
+
 @define
 class Table:
     @define
     class Field:
-        name: str
+        name: FieldName
         type: str
         default: str
         is_optional: Optionality
         namespace_prefix: str | None = None
+        attrs: list[Attribute] = Factory(list)
 
     name: ImportableName
     field_defs: list[Field]
     imports: Imports
+    attrs: list[Attribute]
 
     def adjust_enums(self, enums: set[str]) -> None:
         """
@@ -68,18 +82,49 @@ class Table:
             new_field_defs.append(field_def)
         self.field_defs = list(reversed(new_field_defs))
 
+    def adjust_attribute_namespaces(self, namespace_map: dict[str, set[str]]) -> None:
+        new_table_attrs = []
+        for attr in self.attrs:
+            if attr.namespace == MISSING:
+                for n, ats in namespace_map.items():
+                    if attr.name in ats:
+                        attr = evolve(attr, namespace=n)
+                        break
+                else:
+                    raise Exception(f"Couldn't resolve attribute {attr}")
+                new_table_attrs.append(attr)
+        self.attrs = new_table_attrs
+        for field_def in self.field_defs:
+            new_attrs = []
+            for attr in field_def.attrs:
+                if attr.namespace == MISSING:
+                    for n, ats in namespace_map.items():
+                        if attr.name in ats:
+                            attr = evolve(attr, namespace=n)
+                            break
+                    else:
+                        raise Exception(
+                            f"{self.name}: Couldn't resolve attribute {attr}"
+                        )
+                new_attrs.append(attr)
+            field_def.attrs = new_attrs
+
     def render(self) -> Script:
         # This can be a little tricky, since we need to use `attrs.field`
         # in case we need to supress the repr.
+        is_frozen = FROZEN in self.attrs
         lines = [
-            "@flattrs",
+            "@define" if not is_frozen else "@frozen",
             f"class {self.name}:",
         ]
+        self.imports = merge_imports(
+            self.imports, {"attrs": {"define"} if not is_frozen else {"frozen"}}
+        )
         field_lines = []
         for f in self.field_defs:
             def_str = ""
             has_repr = True
-            if f.type == "bytes":
+            if f.type == "bytes" or NO_REPR in f.attrs:
                 has_repr = False
 
             needs_field = not has_repr
@@ -123,10 +168,9 @@ class Module:
     namespace: str | None
     filename: Path
     imports: Imports
-    importables: list[tuple[ImportableName, Script | Table | Enum]]
+    importables: list[tuple[ImportableName, Script | Table | Enum | Attribute]]
 
     def render(self) -> str:
-
         body = ""
         imports = self.imports
         for item in self.importables:
@@ -135,9 +179,15 @@ class Module:
                 imports = merge_imports(imports, item[1].imports)
             elif isinstance(item[1], Enum):
                 body += "\n".join(item[1].render())
+            elif isinstance(item[1], Attribute):
+                # Attributes don't get rendered.
+                pass
             else:
                 body += "\n".join(item[1])
             body += "\n\n\n"
+        if not body.strip():
+            # We don't render empty files.
+            return ""
 
         imports = self.imports
         for _, item in self.importables:
@@ -170,17 +220,23 @@ class FlatbufferRenderer(Interpreter):
         namespace = None
         for t in tree.find_data("namespace"):
             namespace = str(t.children[0])
-        importables: list[tuple[ImportableName, Script | Table | Enum, Imports]] = [
+        importables: list[
+            tuple[ImportableName, Script | Table | Enum | Attribute, Imports]
+        ] = [
             self.visit(t)
-            for t in tree.find_pred(lambda t: t.data in ("table", "enum", "union"))
+            for t in tree.find_pred(
+                lambda t: t.data in ("table", "enum", "union", "attribute")
+            )
         ]
         imports = {}
-        lines = []
+        res = []
 
         local_names = {i[0] for i in importables}
 
         for name, script_or_table, imps in importables:
-            lines.append((name, script_or_table))
+            if isinstance(script_or_table, Attribute):
+                script_or_table = evolve(script_or_table, namespace=namespace)
+            res.append((name, script_or_table))
             for k, v in imps.items():
                 if k == MISSING:
                     for val in v:
@@ -192,10 +248,14 @@ class FlatbufferRenderer(Interpreter):
                         imports[k] = set()
                     imports[k] |= v
 
-        return Module(namespace, filename, imports, lines)
+        return Module(namespace, filename, imports, res)
 
     def namespace(self, _: ParseTree) -> tuple[list[str], Imports]:
         return [], {}
+
+    def attribute(self, tree: ParseTree) -> tuple[ImportableName, Attribute, Imports]:
+        name = str(tree.children[0])
+        return (name, Attribute(name), {})
 
     def union(self, tree: ParseTree) -> tuple[ImportableName, Script, Imports]:
         name = str(tree.children[0])
@@ -247,33 +307,57 @@ class FlatbufferRenderer(Interpreter):
 
     def table(self, tree: ParseTree) -> tuple[ImportableName, Table, Imports]:
         name = str(tree.children[0])
-        field_defs = [self.table_field(c) for c in tree.children[1:]]
-        imports = {"flattr": {"flattrs"}}
+        table_attributes = []
+        for child in tree.children:
+            if isinstance(child, Tree) and child.data == "attributes":
+                table_attributes.extend(
+                    Attribute(c, namespace=None if c in BUILTIN_ATTRS else MISSING)
+                    for c in child.children
+                )
+        field_defs = [self.table_field(c) for c in tree.find_data("table_field")]
+        imports = {}
         for _, _, _, _, field_imports, _ in field_defs:
             imports = merge_imports(imports, field_imports)
+        fields = []
+        for f in field_defs:
+            is_optional = Attribute("required", namespace=None) not in f[3]
+            fields.append(
+                Table.Field(
+                    f[0],
+                    f[1],
+                    f[2],
+                    is_optional,
+                    f[5] or None,
+                    f[3],
+                )
+            )
 
         return (
             name,
             Table(
                 name,
-                [Table.Field(f[0], f[1], f[2], f[3], f[5] or None) for f in field_defs],
+                fields,
                 imports,
+                table_attributes,
             ),
             imports,
         )
 
     def table_field(
         self, tree: ParseTree
-    ) -> tuple[str, str, str, Optionality, Imports, str]:
+    ) -> tuple[FieldName, str, str, list[Attribute], Imports, str]:
         imports = {}
         name = str(tree.children[0])
         full_type = tree.children[1]
-        is_required = False
-        for attr_tree in tree.find_data("table_field_attributes"):
-            if "required" in attr_tree.children:
-                is_required = True
-                break
-
+        attributes = []
+        for attr_tree in tree.find_data("attributes"):
+            for c in attr_tree.children:
+                attr_name = str(c)
+                if attr_name in BUILTIN_ATTRS:
+                    attr_namespace = None
+                else:
+                    attr_namespace = MISSING
+                attributes.append(Attribute(attr_name, namespace=attr_namespace))
         is_scalar = False
         namespace_prefix = ""
         if full_type == "string":
@@ -311,7 +395,7 @@ class FlatbufferRenderer(Interpreter):
                 pass
             else:
                 # A scalar.
-                is_required = True
+                attributes.append(Attribute("required", namespace=None))
                 type = full_type.children[0]
                 if type.lower() in TYPE_MAP:
                     is_scalar = True
@@ -329,7 +413,7 @@ class FlatbufferRenderer(Interpreter):
                         def_val = f"{type}.{def_val}"
                     default = def_val
 
-        return name, type, default, not is_required, imports, namespace_prefix
+        return name, type, default, attributes, imports, namespace_prefix
 
     def table_field_default(self):
         pass
@@ -345,6 +429,7 @@ def render_directory(input: Path, output: Path) -> None:
     # First we parse, then we resolve imports, then we write.
     per_namespace: dict[str, list[Module]] = {}
     importables_to_module: dict[str, Module] = {}
+    namespace_to_attributes: dict[str, set[str]] = {}
     enums = set()
     tables: list[Table] = []
     for file in input.rglob("*.fbs"):
@@ -360,7 +445,15 @@ def render_directory(input: Path, output: Path) -> None:
                 enums.add(importable.name)
             elif isinstance(importable, Table):
                 tables.append(importable)
+            elif isinstance(importable, Attribute):
+                namespace_to_attributes.setdefault(pm.namespace or "", set()).add(
+                    importable.name
+                )
         per_namespace.setdefault(pm.namespace, []).append(pm)
+
+    # We can resolve attribute namespaces now.
+    for table in tables:
+        table.adjust_attribute_namespaces(namespace_to_attributes)
 
     # At this point, we know which importables are enums.
     # Tables referencing those need to have their types adjusted.
@@ -386,7 +479,6 @@ def render_directory(input: Path, output: Path) -> None:
                 if module.filename.parent == pm_path.parent:
                     rel_path = f".{module.filename.stem}"
                 else:
-
                     pm_parents = set(pm_path.parents)
                     target_parents = set(module.filename.parents)
                     common_parent = sorted(
@@ -403,9 +495,12 @@ def render_directory(input: Path, output: Path) -> None:
                 pm.imports.setdefault(str(rel_path), set()).add(importable)
             try:
                 target_file = output / pm.filename
+                rendered = pm.render()
+                if not rendered:
+                    continue
                 target_file.parent.mkdir(exist_ok=True, parents=True)
                 (target_file.parent / "__init__.py").write_text("")
-                target_file.write_text(pm.render())
+                target_file.write_text(rendered)
             except Exception as exc:
                 print(f"While parsing or rendering {file}: {exc}")
                 print_exception(exc)
