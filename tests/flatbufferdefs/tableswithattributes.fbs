@@ -9,3 +9,8 @@ table NoReprField {
 table FrozenTable (immutable) {
     a_string: string;
 }
+
+// These attributes are ignored.
+table IgnoredAttributes {
+    a_field: uint8 (key);
+}

@@ -23,7 +23,7 @@ class Attribute:
     namespace: str | None = MISSING
 
 
-BUILTIN_ATTRS = {"required", "deprecated"}
+BUILTIN_ATTRS = {"required", "deprecated", "key"}
 NO_REPR = Attribute("norepr", namespace="flattrs")
 FROZEN = Attribute("immutable", namespace="flattrs")
 
@@ -103,7 +103,9 @@ class Table:
                             attr = evolve(attr, namespace=n)
                             break
                     else:
-                        raise Exception(f"Couldn't resolve attribute {attr}")
+                        raise Exception(
+                            f"{self.name}: Couldn't resolve attribute {attr}"
+                        )
                 new_attrs.append(attr)
             field_def.attrs = new_attrs
 
