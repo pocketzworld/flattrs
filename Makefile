@@ -1,3 +1,5 @@
+.PHONY: flatc flattrs
+
 WHEEL_DOCKER_IMAGE := quay.io/pypa/manylinux_2_28_x86_64
 
 flatc:

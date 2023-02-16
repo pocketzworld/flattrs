@@ -30,7 +30,6 @@ from .typing import (
     get_annotation_and_base,
     get_optional_arg,
     get_union_args,
-    is_annotated_with,
     is_generic_subclass,
     is_subclass,
     resolve_types,

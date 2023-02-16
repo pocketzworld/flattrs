@@ -35,7 +35,7 @@ T = TypeVar("T", bound=AttrsInstance)
 
 try:
     from .cflattr.builder import Builder
-except ImportError:
+except ImportError:  # NOQA
     from flatbuffers.builder import Builder
 
 

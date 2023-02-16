@@ -1,0 +1,11 @@
+include "flattrs.fbs";
+
+namespace flattrs_test;
+
+table NoReprField {
+    noReprInt: uint16 (norepr);
+}
+
+table FrozenTable (immutable) {
+    a_string: string;
+}

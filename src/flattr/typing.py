@@ -24,10 +24,6 @@ def is_generic_subclass(t, s):
     )
 
 
-def is_annotated_with(typ, annotation) -> bool:
-    return typ.__class__ is _AnnotatedAlias and annotation in get_args(typ)
-
-
 def get_annotation_and_base(typ, annotation_cls: type[T]) -> tuple[T, Any] | None:
     if typ.__class__ is _AnnotatedAlias:
         args = get_args(typ)
