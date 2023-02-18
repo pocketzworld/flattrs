@@ -4,4 +4,4 @@
 
 class AnInt64Enum(object):
     NINETEEN = -40000000001
-    TWENTY = -40000000000
+    None_ = -40000000000

@@ -9,17 +9,15 @@ from .renderer import render
 @click.command()
 @click.argument("input", type=click.Path(path_type=Path))
 @click.argument("output", type=click.Path(path_type=Path))
-def main(input: Path, output: Path) -> None:
+@click.option("--gen-namespace-exports/--no-gen-namespace-exports", default=False)
+def main(input: Path, output: Path, gen_namespace_exports: bool) -> None:
     config = ConfigParser()
     excluded = set()
-    frozen = set()
     no_repr = set()
     try:
         with (Path("conf.ini")).open() as f:
             config.read_string(f.read())
         excluded = set(e.strip() for e in config.get("flattrs", "exclude").split(","))
-        frozen = set(e.strip() for e in config.get("flattrs", "frozen").split(","))
-        no_repr = set(e.strip() for e in config.get("flattrs", "no_repr").split(","))
     except FileNotFoundError:
         pass
 
@@ -28,7 +26,7 @@ def main(input: Path, output: Path) -> None:
         cls, attr = cls_and_attr.split(".", 1)
         no_repr_per_class.setdefault(cls, set()).add(attr)
 
-    render(input, output)
+    render(input, output, gen_namespace_exports)
 
 
 if __name__ == "__main__":
