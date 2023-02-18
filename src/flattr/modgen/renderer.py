@@ -1,4 +1,5 @@
 from enum import Enum as PythonEnum
+from keyword import iskeyword
 from pathlib import Path
 from traceback import print_exception
 from typing import Final, TypeAlias
@@ -166,7 +167,7 @@ class Enum:
 @define
 class Module:
     namespace: str | None
-    filename: Path
+    path: Path
     imports: Imports
     importables: list[tuple[ImportableName, Script | Table | Enum | Attribute]]
 
@@ -296,7 +297,7 @@ class FlatbufferRenderer(Interpreter):
                 next_val += 1
             else:
                 next_val = val + 1
-            fields.append(f"    {name} = {val}")
+            fields.append(f"    {map_python_keywords(name)} = {val}")
         return enum_name, Enum(enum_name, type, fields), imports
 
     def enum_field(self, tree: ParseTree) -> tuple[str, int | None]:
@@ -425,9 +426,15 @@ def parse_module(module_tree: Tree, file: Path) -> Module:
     return parsed_module
 
 
-def render_directory(input: Path, output: Path) -> None:
+def render_directory(
+    input: Path, output: Path, gen_namespace_imports: bool = False
+) -> None:
+    """
+    Render a directory of Flatbuffers into a directory of Python.
+
+    """
     # First we parse, then we resolve imports, then we write.
-    per_namespace: dict[str, list[Module]] = {}
+    per_namespace: dict[str | None, list[Module]] = {}
     importables_to_module: dict[str, Module] = {}
     namespace_to_attributes: dict[str, set[str]] = {}
     enums = set()
@@ -471,22 +478,22 @@ def render_directory(input: Path, output: Path) -> None:
     (output / "__init__.py").write_text("")
     for pm_list in per_namespace.values():
         for pm in pm_list:
-            pm_path = pm.filename
+            pm_path = pm.path
             missing_imports = pm.imports.pop(MISSING, set())
             for importable in missing_imports:
                 module = importables_to_module[importable]
 
-                if module.filename.parent == pm_path.parent:
-                    rel_path = f".{module.filename.stem}"
+                if module.path.parent == pm_path.parent:
+                    rel_path = f".{module.path.stem}"
                 else:
                     pm_parents = set(pm_path.parents)
-                    target_parents = set(module.filename.parents)
+                    target_parents = set(module.path.parents)
                     common_parent = sorted(
                         pm_parents & target_parents, key=lambda p: -len(str(p))
                     )[0]
                     num_dots = len(pm_path.relative_to(common_parent).parent.parts) + 1
 
-                    target_rel_path = module.filename.relative_to(common_parent)
+                    target_rel_path = module.path.relative_to(common_parent)
                     fname = target_rel_path.stem
                     if target_rel_path.parent == Path("."):
                         rel_path = f"{'.' * num_dots}{fname}"
@@ -494,7 +501,7 @@ def render_directory(input: Path, output: Path) -> None:
                         rel_path = f"{'.' * num_dots}{str(target_rel_path.parent).replace('/', '.')}.{fname}"
                 pm.imports.setdefault(str(rel_path), set()).add(importable)
             try:
-                target_file = output / pm.filename
+                target_file = output / pm.path
                 rendered = pm.render()
                 if not rendered:
                     continue
@@ -504,14 +511,67 @@ def render_directory(input: Path, output: Path) -> None:
             except Exception as exc:
                 print(f"While parsing or rendering {file}: {exc}")
                 print_exception(exc)
+    if gen_namespace_imports:
+        for namespace, pm_list in per_namespace.items():
+            importables: list[tuple[str, Path]] = []
+            for module in pm_list:
+                importables.extend(
+                    [
+                        (i[0], module.path)
+                        for i in module.importables
+                        if not isinstance(i[1], Attribute)
+                    ]
+                )
+            if not importables:
+                continue
+            namespace_dir = Path(
+                namespace.replace(".", "/") if namespace is not None else "."
+            )
+            namespace_fn = namespace_dir / "__init__.py"
+            (output / namespace_dir).mkdir(parents=True, exist_ok=True)
+            (output / namespace_fn).write_text(
+                render_exports(namespace_fn, importables)
+            )
 
 
-def render(input: Path, output: Path) -> None:
+def make_import_path(importing_from: Path, import_target: Path) -> str:
+    if importing_from.parent == import_target.parent:
+        rel_path = f".{import_target.stem}"
+    else:
+        active_parents = set(importing_from.parents)
+        target_parents = set(import_target.parents)
+        common_parent = sorted(
+            active_parents & target_parents, key=lambda p: -len(str(p))
+        )[0]
+        num_dots = len(importing_from.relative_to(common_parent).parent.parts) + 1
+
+        target_rel_path = import_target.relative_to(common_parent)
+        fname = target_rel_path.stem
+        if target_rel_path.parent == Path("."):
+            rel_path = f"{'.' * num_dots}{fname}"
+        else:
+            rel_path = f"{'.' * num_dots}{str(target_rel_path.parent).replace('/', '.')}.{fname}"
+    return rel_path
+
+
+def render_exports(importing_from: Path, importables: list[tuple[str, Path]]) -> str:
+    return (
+        "\n".join(
+            f"from {make_import_path(importing_from, p)} import {i}"
+            for i, p in importables
+        )
+        + "\n\n__all__ = ["
+        + "\n".join(f'"{i[0]}",' for i in importables)
+        + "]\n"
+    )
+
+
+def render(input: Path, output: Path, gen_namespace_exports: bool = False) -> None:
     if input.is_file():
         output.parent.mkdir(exist_ok=True, parents=True)
         output.write_text(parse_module(parser.parse(input.read_text()), output))
     else:
-        render_directory(input, output)
+        render_directory(input, output, gen_namespace_exports)
 
 
 def merge_imports(a: Imports, b: Imports) -> Imports:
@@ -521,6 +581,14 @@ def merge_imports(a: Imports, b: Imports) -> Imports:
     for k, v in b.items():
         res.setdefault(k, set()).update(v)
     return res
+
+
+def map_python_keywords(name: str) -> str:
+    """If an identifier is a Python keyword, we adjust it by adding an underscore.
+
+    Like flatc.
+    """
+    return f"{name}_" if iskeyword(name) else name
 
 
 TYPE_MAP: Final = {

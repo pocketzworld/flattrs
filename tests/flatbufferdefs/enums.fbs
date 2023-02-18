@@ -48,7 +48,7 @@ enum AnUInt64Enum: uint64 {
 
 enum AnInt64Enum: int64 {
     NINETEEN = -40000000001,
-    TWENTY,
+    None,  // This is a Python keyword
 }
 
 table AllEnums {

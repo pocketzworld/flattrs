@@ -8,7 +8,7 @@ flatc:
 
 flattrs:
 	rm -rf tests/flattrs/models &&\
-	python -m flattr.modgen tests/flatbufferdefs tests/flattrs/models &&\
+	python -m flattr.modgen --gen-namespace-exports tests/flatbufferdefs tests/flattrs/models &&\
 	isort tests/flattrs/models &&\
 	black tests/flattrs/models
 

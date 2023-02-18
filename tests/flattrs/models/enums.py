@@ -62,7 +62,7 @@ class AnUInt64Enum(Uint64Enum):
 
 class AnInt64Enum(IntEnum):
     NINETEEN = -40000000001
-    TWENTY = -40000000000
+    None_ = -40000000000
 
 
 @define

@@ -31,7 +31,20 @@ def test_compare_to_manual(tmp_path: Path) -> None:
     These should be identical to generated models.
     """
     dest_dir = tmp_path / "models"
-    render(Path(__file__).parent / "flatbufferdefs", dest_dir)
+    run(
+        [
+            "python",
+            "-m",
+            "coverage",
+            "run",
+            "-m",
+            "flattr.modgen",
+            str((Path(__file__).parent / "flatbufferdefs")),
+            str(dest_dir),
+            "--gen-namespace-exports",
+        ],
+        check=True,
+    )
     run(["isort", str(dest_dir)], check=True)
     run(["black", str(dest_dir)], check=True)
     assert_dirs_identical(Path(__file__).parent / "flattrs" / "models_manual", dest_dir)
