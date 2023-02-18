@@ -561,7 +561,7 @@ def render_exports(importing_from: Path, importables: list[tuple[str, Path]]) ->
             for i, p in importables
         )
         + "\n\n__all__ = ["
-        + "\n".join(f'"{i[0]}",' for i in importables)
+        + "\n".join(f'"{i[0]}",' for i in sorted(importables))
         + "]\n"
     )
 
