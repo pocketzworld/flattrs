@@ -7,8 +7,7 @@ profile = "black"
 [tool.coverage.run]
 parallel = true
 branch = true
-source = ["flattr"]
-omit = ["src/flattr/mypy.py"]
+source = ["flattrs"]
 
 [tool.coverage.paths]
 source = ["src", ".nox/tests*/**/site-packages"]
@@ -16,4 +15,3 @@ source = ["src", ".nox/tests*/**/site-packages"]
 [tool.coverage.report]
 show_missing = true
 skip_covered = true
-omit = ["src/flattr/mypy.py"]

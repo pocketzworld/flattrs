@@ -11,7 +11,7 @@ from hypothesis.strategies import (
     tuples,
 )
 
-from flattr import dumps, loads
+from flattrs import dumps, loads
 
 from ..strats import (
     float32s,

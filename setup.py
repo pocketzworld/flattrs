@@ -5,7 +5,7 @@ from setuptools import find_packages, setup
 if python_implementation() != "PyPy":
     from Cython.Build import cythonize
 
-    ext_modules = cythonize("src/flattr/cflattr/*.pyx", annotate=True)
+    ext_modules = cythonize("src/flattrs/cflattrs/*.pyx", annotate=True)
 else:
     ext_modules = []
 
@@ -13,7 +13,7 @@ setup(
     name="flattrs",
     long_description="Flatbuffers support for Python",
     long_description_content_type="text/x-rst",
-    version="0.1.16",
+    version="23.1.0.dev0",
     install_requires=[
         "attrs",
         "flatbuffers==23.1.4",

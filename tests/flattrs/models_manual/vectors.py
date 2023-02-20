@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from attrs import define, field
 
-from flattr import Float32, Int8, Int16, Int32, Uint16, Uint32, Uint64
+from flattrs import Float32, Int8, Int16, Int32, Uint16, Uint32, Uint64
 
 from .common import Common1
 from .enums import ASimpleUByteEnum

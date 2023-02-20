@@ -2,7 +2,7 @@
 from hypothesis import given
 from hypothesis.strategies import DrawFn, binary, booleans, composite, text, tuples
 
-from flattr import dumps, loads
+from flattrs import dumps, loads
 
 from ..strats import (
     float32s,

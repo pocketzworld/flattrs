@@ -3,7 +3,7 @@ from attrs import asdict
 from hypothesis import given
 from hypothesis.strategies import binary, integers, just, text
 
-from flattr import dumps, loads
+from flattrs import dumps, loads
 from tests import model_from_bytes, model_to_bytes
 
 from ..flatc import models_enums as models_enums_flatc

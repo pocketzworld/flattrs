@@ -1,7 +1,7 @@
 from hypothesis import given
-from hypothesis.strategies import DrawFn, booleans, composite, none
+from hypothesis.strategies import none
 
-from flattr import dumps, loads
+from flattrs import dumps, loads
 
 from .models.tableswithtables import ContainsTable, OptionalTable
 from .test_common import common1s

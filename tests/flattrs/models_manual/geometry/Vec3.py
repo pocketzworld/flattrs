@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from attrs import define
 
-from flattr import Float32
+from flattrs import Float32
 
 
 @define

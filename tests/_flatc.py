@@ -20,14 +20,14 @@ from flatbuffers.number_types import (
     Uint64Flags,
 )
 
-from flattr._analysis import analyze
-from flattr._consts import (
+from flattrs._analysis import analyze
+from flattrs._consts import (
     HELPER_TYPE_TO_SCALAR_TYPE,
     SCALAR_TYPE_TO_DEFAULT,
     SCALAR_TYPE_TO_WIDTH,
     NoneType,
 )
-from flattr._types import (
+from flattrs._types import (
     FieldName,
     MaybeDefault,
     Optionality,
@@ -36,10 +36,10 @@ from flattr._types import (
     SlotNumber,
     UnionMapping,
 )
-from flattr.typing import get_list_args, get_union_args, is_subclass
+from flattrs.typing import get_list_args, get_union_args, is_subclass
 
 try:
-    from flattr.cflattr.builder import Builder
+    from flattrs.cflattr.builder import Builder
 except ImportError:
     from flatbuffers.builder import Builder
 
