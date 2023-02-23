@@ -61,5 +61,5 @@ table AllEnums {
     uint32enum: AnUInt32Enum = FOURTEEN;
     int32enum: AnInt32Enum = SIXTEEN;
     uint64enum: AnUInt64Enum = SEVENTEEN;
-    int64enum: AnInt64Enum = NINETEEN;
+    int64enum: AnInt64Enum = None;  // Needs to be handled
 }

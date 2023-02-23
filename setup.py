@@ -39,4 +39,5 @@ setup(
     },
     package_data={"": ["*.pxd", "*.pyx", "py.typed"]},
     license="MIT license",
+    entry_points={"console_scripts": ["flattrs=flattrs.modgen.__main__:main"]},
 )

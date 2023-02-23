@@ -92,7 +92,7 @@ class AllEnums(object):
         o = flatbuffers.number_types.UOffsetTFlags.py_type(self._tab.Offset(22))
         if o != 0:
             return self._tab.Get(flatbuffers.number_types.Int64Flags, o + self._tab.Pos)
-        return -40000000001
+        return -40000000000
 
 def AllEnumsStart(builder): builder.StartObject(10)
 def Start(builder):
@@ -124,7 +124,7 @@ def AddInt32enum(builder, int32enum):
 def AllEnumsAddUint64enum(builder, uint64enum): builder.PrependUint64Slot(8, uint64enum, 40000000000)
 def AddUint64enum(builder, uint64enum):
     return AllEnumsAddUint64enum(builder, uint64enum)
-def AllEnumsAddInt64enum(builder, int64enum): builder.PrependInt64Slot(9, int64enum, -40000000001)
+def AllEnumsAddInt64enum(builder, int64enum): builder.PrependInt64Slot(9, int64enum, -40000000000)
 def AddInt64enum(builder, int64enum):
     return AllEnumsAddInt64enum(builder, int64enum)
 def AllEnumsEnd(builder): return builder.EndObject()

@@ -50,6 +50,8 @@ class Table:
         Table fields that are enums must not be optional.
 
         Also, we adjust the default values for enums, if present.
+
+        In addition, we apply the keyword remap to the default, if needed.
         """
         self.field_defs = [
             f
@@ -57,7 +59,9 @@ class Table:
             else evolve(
                 f,
                 is_optional=False,
-                default=f"{f.type}.{f.default}" if f.default else f.default,
+                default=f"{f.type}.{map_python_keywords(f.default)}"
+                if f.default
+                else f.default,
             )
             for f in self.field_defs
         ]
