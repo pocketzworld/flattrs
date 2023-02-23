@@ -269,7 +269,7 @@ class FlatbufferRenderer(Interpreter):
             if len(member.children) > 1:
                 # This has a union tag attached.
                 imports["typing"] = {"Annotated"}
-                imports["flattr"] = {"UnionVal"}
+                imports["flattrs"] = {"UnionVal"}
                 member_name = (
                     f"Annotated[{member_name}, UnionVal({str(member.children[1])})]"
                 )
@@ -287,7 +287,7 @@ class FlatbufferRenderer(Interpreter):
         if type == "IntEnum":
             imports = {"enum": {"IntEnum"}}
         else:
-            imports = {"flattr": {type}}
+            imports = {"flattrs": {type}}
         fields = []
         next_val = 0
         for child in tree.children[2:]:
@@ -382,7 +382,7 @@ class FlatbufferRenderer(Interpreter):
                     if inner_type.lower() in TYPE_MAP:
                         inner_type = TYPE_MAP[inner_type]
                         if inner_type not in ("int", "float", "bool", "str", "float"):
-                            imports["flattr"] = {inner_type}
+                            imports["flattrs"] = {inner_type}
                     else:
                         namespace_prefix, inner_type = (
                             inner_type.rsplit(".", 1)
@@ -402,7 +402,7 @@ class FlatbufferRenderer(Interpreter):
                     is_scalar = True
                     type = TYPE_MAP[type]
                     if type not in ("int", "float", "bool", "str", "float"):
-                        imports["flattr"] = {type}
+                        imports["flattrs"] = {type}
 
                 default = ""
                 for def_tree in tree.find_data("table_field_default"):

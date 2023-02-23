@@ -4,7 +4,7 @@ from enum import Enum
 from attrs import define
 from pytest import raises
 
-from flattr import dumps
+from flattrs import dumps
 
 
 def test_unsupported_enums() -> None:

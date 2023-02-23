@@ -2,7 +2,7 @@
 from hypothesis import given
 from hypothesis.strategies import binary, just, none, sampled_from, text, tuples
 
-from flattr import dumps, loads
+from flattrs import dumps, loads
 
 from ..strats import float32s, float64s
 from .models.enums import ASimpleByteEnum

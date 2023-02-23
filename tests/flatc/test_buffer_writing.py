@@ -3,7 +3,7 @@ from struct import Struct, pack, unpack
 from hypothesis import given
 from hypothesis.strategies import booleans, floats
 
-from flattr.cflattr.builder import (
+from flattrs.cflattrs.builder import (
     writeBool,
     writeFloat32,
     writeFloat64,

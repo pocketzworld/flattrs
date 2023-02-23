@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from attrs import define, field
 
-from flattr import Float32
+from flattrs import Float32
 
 from .enums import ASimpleByteEnum
 

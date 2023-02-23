@@ -1,7 +1,7 @@
+from flatbuffers.builder import Builder
 from hypothesis.strategies import composite, integers
 
-from flatbuffers.builder import Builder
-from flattr.cflattr.builder import Builder as CBuilder
+from flattrs.cflattrs.builder import Builder as CBuilder
 
 
 @composite

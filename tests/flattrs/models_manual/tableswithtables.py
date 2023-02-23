@@ -4,7 +4,7 @@ from typing import Annotated
 
 from attrs import define
 
-from flattr import UnionVal
+from flattrs import UnionVal
 
 from .common import AllScalars, AllScalarsWithDefaults, Common1
 from .enums import AnInt8Enum

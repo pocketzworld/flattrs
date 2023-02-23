@@ -4,7 +4,7 @@ from enum import IntEnum
 
 from attrs import define
 
-from flattr import (
+from flattrs import (
     Int8Enum,
     Int16Enum,
     Int32Enum,

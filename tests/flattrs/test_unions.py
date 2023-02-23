@@ -1,7 +1,7 @@
 from hypothesis import given
 from hypothesis.strategies import none, text
 
-from flattr import dumps, loads
+from flattrs import dumps, loads
 
 from .models.nested.nested_trivial import NestedJustAString
 from .models.tableswithtables import (

@@ -1,7 +1,7 @@
 from pathlib import Path
 from subprocess import run
 
-from flattr.modgen.renderer import render
+from flattrs.modgen.renderer import render
 
 
 def assert_dirs_identical(dir_a: Path, dir_b: Path) -> None:
@@ -38,7 +38,7 @@ def test_compare_to_manual(tmp_path: Path) -> None:
             "coverage",
             "run",
             "-m",
-            "flattr.modgen",
+            "flattrs.modgen",
             str((Path(__file__).parent / "flatbufferdefs")),
             str(dest_dir),
             "--gen-namespace-exports",
