@@ -76,4 +76,4 @@ class AllEnums:
     uint32enum: AnUInt32Enum = AnUInt32Enum.FOURTEEN
     int32enum: AnInt32Enum = AnInt32Enum.SIXTEEN
     uint64enum: AnUInt64Enum = AnUInt64Enum.SEVENTEEN
-    int64enum: AnInt64Enum = AnInt64Enum.NINETEEN
+    int64enum: AnInt64Enum = AnInt64Enum.None_
