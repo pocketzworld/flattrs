@@ -34,7 +34,7 @@ from .typing import get_annotation_and_base
 T = TypeVar("T", bound=AttrsInstance)
 
 try:
-    from .cflattr.builder import Builder
+    from .cflattrs.builder import Builder
 except ImportError:  # NOQA
     from flatbuffers.builder import Builder
 

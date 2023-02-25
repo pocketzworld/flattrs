@@ -4,6 +4,7 @@ from hypothesis import given
 from hypothesis.strategies import booleans, lists, tuples
 
 from flattrs import dumps, loads
+from flattrs.typing import resolve_types
 from tests import model_from_bytes, model_to_bytes
 
 from ..flatc import models_vectors as models_vectors_flatc
@@ -21,6 +22,10 @@ from ..flatc.test_vectors import (
 )
 from ..flattrs.models import vectors as models_vectors_flattrs
 from ..strats import int8s, int16s, int32s, int64s
+
+# we need to resolve befor cattrs sees it, or it will be resolved
+# without extras.
+resolve_types(models_vectors_flattrs.VectorsOfFloats)
 
 
 @given(

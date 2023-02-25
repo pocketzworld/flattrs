@@ -1,9 +1,9 @@
 """Types used internally."""
-from enum import Enum, IntEnum
+from enum import IntEnum
 
 from attrs import NOTHING, AttrsInstance, fields, frozen, has
 
-from ._consts import HELPER_TYPE_TO_SCALAR_TYPE, NoneType
+from ._consts import ENUM_TYPE_TO_SCALAR_TYPE, HELPER_TYPE_TO_SCALAR_TYPE, NoneType
 from ._types import (
     FieldName,
     MaybeDefault,
@@ -17,13 +17,22 @@ from .types import (
     Float,
     Float64,
     Int8,
+    Int8Enum,
     Int16,
+    Int16Enum,
     Int32,
+    Int32Enum,
     Int64,
+    Int64Enum,
+    ScalarMarker,
     Uint8,
+    Uint8Enum,
     Uint16,
+    Uint16Enum,
     Uint32,
+    Uint32Enum,
     Uint64,
+    Uint64Enum,
     UnionVal,
 )
 from .typing import (
@@ -139,9 +148,21 @@ def analyze(
                             True,
                         )
                     )
-                elif issubclass(arg, Enum) and issubclass(arg, int):
-                    for helper_type, scalar_type in HELPER_TYPE_TO_SCALAR_TYPE.items():
-                        if helper_type in arg.__mro__:
+                elif issubclass(
+                    arg,
+                    (
+                        Uint8Enum,
+                        Uint16Enum,
+                        Uint32Enum,
+                        Uint64Enum,
+                        Int8Enum,
+                        Int16Enum,
+                        Int32Enum,
+                        Int64Enum,
+                    ),
+                ):
+                    for enum_type, scalar_type in ENUM_TYPE_TO_SCALAR_TYPE.items():
+                        if enum_type in arg.__mro__:
                             break
                     lists_of_enums.append(
                         (
@@ -184,9 +205,21 @@ def analyze(
                         False,
                     )
                 )
-            elif issubclass(arg, Enum) and issubclass(arg, int):
-                for helper_type, scalar_type in HELPER_TYPE_TO_SCALAR_TYPE.items():
-                    if helper_type in arg.__mro__:
+            elif issubclass(
+                arg,
+                (
+                    Uint8Enum,
+                    Uint16Enum,
+                    Uint32Enum,
+                    Uint64Enum,
+                    Int8Enum,
+                    Int16Enum,
+                    Int32Enum,
+                    Int64Enum,
+                ),
+            ):
+                for enum_type, scalar_type in ENUM_TYPE_TO_SCALAR_TYPE.items():
+                    if enum_type in arg.__mro__:
                         break
                 lists_of_enums.append(
                     (
@@ -199,10 +232,21 @@ def analyze(
                 )
             else:
                 raise TypeError(f"Cannot handle {field.name} {ftype}")
-        elif is_subclass(ftype, Enum) and is_subclass(
-            ftype, int
-        ):  # Enums before scalars, since IntEnum is a subclass of int.
-            for helper_type, scalar_type in HELPER_TYPE_TO_SCALAR_TYPE.items():
+        elif is_subclass(
+            ftype,
+            (
+                Uint8Enum,
+                Uint16Enum,
+                Uint32Enum,
+                Uint64Enum,
+                Int8Enum,
+                Int16Enum,
+                Int32Enum,
+                Int64Enum,
+            ),
+        ):
+            # Enums before scalars, since IntEnum is a subclass of int.
+            for helper_type, scalar_type in ENUM_TYPE_TO_SCALAR_TYPE.items():
                 if helper_type in ftype.__mro__:
                     break
             enums.append(
@@ -213,7 +257,11 @@ def analyze(
                     field.default if field.default is not NOTHING else list(ftype)[0],
                 )
             )
-        elif is_subclass(ftype, (bool, Float, Float64, Uint8, Uint64, Int32, Int64)):
+        elif get_annotation_and_base(ftype, ScalarMarker) is not None or ftype in (
+            bool,
+            int,
+            float,
+        ):
             inlines.append(
                 (
                     field.name,
