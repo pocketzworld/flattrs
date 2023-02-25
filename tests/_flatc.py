@@ -39,7 +39,7 @@ from flattrs._types import (
 from flattrs.typing import get_list_args, get_union_args, is_subclass
 
 try:
-    from flattrs.cflattr.builder import Builder
+    from flattrs.cflattrs.builder import Builder
 except ImportError:
     from flatbuffers.builder import Builder
 

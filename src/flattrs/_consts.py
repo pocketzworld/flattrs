@@ -5,16 +5,35 @@ from .types import (
     Float,
     Float64,
     Int8,
+    Int8Enum,
     Int16,
+    Int16Enum,
     Int32,
+    Int32Enum,
     Int64,
+    Int64Enum,
     Uint8,
+    Uint8Enum,
     Uint16,
+    Uint16Enum,
     Uint32,
+    Uint32Enum,
     Uint64,
+    Uint64Enum,
 )
 
 NoneType = type(None)
+
+ENUM_TYPE_TO_SCALAR_TYPE: Final = {
+    Uint8Enum: "Uint8",
+    Uint16Enum: "Uint16",
+    Uint32Enum: "Uint32",
+    Uint64Enum: "Uint64",
+    Int8Enum: "Int8",
+    Int16Enum: "Int16",
+    Int32Enum: "Int32",
+    Int64Enum: "Int64",
+}
 
 SCALAR_TYPE_TO_PYTHON: Final[dict[ScalarType, type]] = {
     "Uint8": int,

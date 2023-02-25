@@ -1,5 +1,7 @@
 from enum import IntEnum
-from typing import TypeAlias
+from typing import Annotated, Literal, TypeAlias
+
+from attrs import frozen
 
 try:
     from enum import ReprEnum as Enum
@@ -7,43 +9,42 @@ except ImportError:
     from enum import Enum
 
 
-class Uint8(int):
-    """An 8-bit Flatbuffer unsigned int."""
+@frozen
+class ScalarMarker:
+    signed: bool
+    width: Literal[8, 16, 32, 64]
 
 
-class Uint8Enum(Uint8, Enum):
+Uint8 = Annotated[int, ScalarMarker(False, 8)]
+Uint16 = Annotated[int, ScalarMarker(False, 16)]
+Uint32 = Annotated[int, ScalarMarker(False, 32)]
+Uint64 = Annotated[int, ScalarMarker(False, 64)]
+Int8 = Annotated[int, ScalarMarker(True, 8)]
+Int16 = Annotated[int, ScalarMarker(True, 16)]
+Int32 = Annotated[int, ScalarMarker(True, 32)]
+Int64: TypeAlias = int
+Float = Annotated[float, ScalarMarker(True, 32)]
+Float32: TypeAlias = Float
+Float64: TypeAlias = float
+
+
+class Uint8Enum(IntEnum):
     """An 8-bit Flatbuffer enum."""
 
 
 UbyteEnum: TypeAlias = Uint8Enum
 
 
-class Uint16(int):
-    """A 16-bit Flatbuffer unsigned int."""
-
-
-class Uint16Enum(Uint16, Enum):
+class Uint16Enum(IntEnum):
     """A 16-bit Flatbuffer enum."""
 
 
-class Uint32(int):
-    """A 32-bit Flatbuffer unsigned int."""
-
-
-class Uint32Enum(Uint32, Enum):
+class Uint32Enum(IntEnum):
     """A 32-bit Flatbuffer enum."""
 
 
-class Uint64(int):
-    """A 64-bit Flatbuffer unsigned int."""
-
-
-class Uint64Enum(Uint64, Enum):
+class Uint64Enum(IntEnum):
     """A 64-bit Flatbuffer enum."""
-
-
-class Int8(int):
-    """An 8-bit Flatbuffer signed int."""
 
 
 class Int8Enum(Int8, Enum):
@@ -53,32 +54,15 @@ class Int8Enum(Int8, Enum):
 ByteEnum: TypeAlias = Int8Enum
 
 
-class Int16(int):
-    """A 16-bit Flatbuffer signed int."""
-
-
-class Int16Enum(Int16, Enum):
+class Int16Enum(IntEnum):
     """A 16-bit Flatbuffer signed enum."""
 
 
-class Int32(int):
-    """A 32-bit Flatbuffer signed int."""
-
-
-class Int32Enum(Int32, Enum):
+class Int32Enum(IntEnum):
     """A 32-bit Flatbuffer signed enum."""
 
 
-Int64: TypeAlias = int
 Int64Enum: TypeAlias = IntEnum
-
-
-class Float(float):
-    """A 32-bit Flatbuffer float."""
-
-
-Float32: TypeAlias = Float
-Float64: TypeAlias = float
 
 
 class UnionVal(int):
