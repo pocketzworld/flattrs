@@ -35,4 +35,9 @@ table AllScalarsWithDefaults {
     float64: double = 1.0;
 }
 
+table Common2 {
+    strings: [string] (required);
+    a_string: string;
+}
+
 root_type Common1;

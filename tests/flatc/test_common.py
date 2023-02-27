@@ -1,6 +1,6 @@
 """Test serialization and deserialization of common tables."""
 from hypothesis import given
-from hypothesis.strategies import booleans, composite, text
+from hypothesis.strategies import booleans, composite, lists, text, tuples
 
 from tests import model_from_bytes, model_to_bytes
 
@@ -16,7 +16,7 @@ from ..strats import (
     uint32s,
     uint64s,
 )
-from .models_common import AllScalars, AllScalarsWithDefaults, Common1
+from .models_common import AllScalars, AllScalarsWithDefaults, Common1, Common2
 
 
 @composite
@@ -58,11 +58,20 @@ def all_scalars_with_defaults(draw):
     )
 
 
+common_2s = tuples(lists(text()), text()).map(lambda t: Common2(*t))
+
+
 @given(common1s())
 def test_common1(inst: Common1) -> None:
     restruct = model_from_bytes(inst.__class__, model_to_bytes(inst))
     assert inst == restruct
     assert isinstance(restruct.aSmallInt, int)
+
+
+@given(common_2s)
+def test_common2(inst: Common2) -> None:
+    restruct = model_from_bytes(inst.__class__, model_to_bytes(inst))
+    assert inst == restruct
 
 
 @given(all_scalars())

@@ -1,6 +1,6 @@
 """Test serialization and deserialization of common tables."""
 from hypothesis import given
-from hypothesis.strategies import DrawFn, binary, booleans, composite, text, tuples
+from hypothesis.strategies import DrawFn, booleans, composite, lists, text, tuples
 
 from flattrs import dumps, loads
 
@@ -16,7 +16,7 @@ from ..strats import (
     uint32s,
     uint64s,
 )
-from .models.common import AllScalars, AllScalarsWithDefaults, Common1
+from .models.common import AllScalars, AllScalarsWithDefaults, Common1, Common2
 
 common1s = tuples(text(), uint8s, int32s).map(lambda a: Common1(*a))
 
@@ -69,4 +69,19 @@ def test_all_scalars(inst: AllScalars) -> None:
 
 @given(all_scalars_with_defaults())
 def test_all_scalars_with_defaults(inst: AllScalarsWithDefaults) -> None:
+    assert inst == loads(dumps(inst), inst.__class__)
+
+
+@given(tuples(lists(int32s)))
+def test_common_2s(inst: Common2) -> None:
+    assert inst == loads(dumps(inst), inst.__class__)
+
+
+@given(all_scalars_with_defaults())
+def test_all_scalars_with_defaults(inst: AllScalarsWithDefaults) -> None:
+    assert inst == loads(dumps(inst), inst.__class__)
+
+
+@given(tuples(lists(text()), text()).map(lambda t: Common2(*t)))
+def test_common_2s(inst: Common2) -> None:
     assert inst == loads(dumps(inst), inst.__class__)

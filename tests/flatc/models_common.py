@@ -1,5 +1,6 @@
 from flatc import flattrs_test
 from flatc.flattrs_test.AllScalarsWithDefaults import AllScalarsWithDefaults
+from flatc.flattrs_test.Common2 import Common2
 from tests import Flatbuffer, from_package
 
 
@@ -38,3 +39,9 @@ class AllScalarsWithDefaults:
     int64: int = 1
     float32: float = 1.0
     float64: float = 1.0
+
+
+@Flatbuffer(Common2)
+class Common2:
+    strings: list[str]
+    a_string: str | None = None
