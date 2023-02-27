@@ -1,4 +1,4 @@
-from ..common import AllScalars, AllScalarsWithDefaults, Common1
+from ..common import AllScalars, AllScalarsWithDefaults, Common1, Common2
 from ..enums import (
     AllEnums,
     AnInt8Enum,
@@ -54,6 +54,7 @@ __all__ = [
     "AnUInt64Enum",
     "AnUInt8Enum",
     "Common1",
+    "Common2",
     "CommonUnion",
     "ContainsNamespaced",
     "ContainsTable",

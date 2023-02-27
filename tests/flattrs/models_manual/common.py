@@ -40,3 +40,9 @@ class AllScalarsWithDefaults:
     int64: int = 1
     float32: Float32 = 1.0
     float64: float = 1.0
+
+
+@define
+class Common2:
+    strings: list[str]
+    a_string: str | None = None

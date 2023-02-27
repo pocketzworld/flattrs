@@ -49,8 +49,8 @@ from .typing import (
 class FlatbufferTable:
     cl: type[AttrsInstance]
     num_slots: int
-    inlines: list[FieldName, ScalarType, SlotNumber, MaybeDefault]
-    enums: list[FieldName, ScalarType, SlotNumber, MaybeDefault]
+    inlines: list[tuple[FieldName, ScalarType, SlotNumber, MaybeDefault]]
+    enums: list[tuple[FieldName, ScalarType, SlotNumber, MaybeDefault]]
     strings: list[tuple[FieldName, SlotNumber, Optionality]]
     byte_fields: list[tuple[FieldName, SlotNumber, Optionality]]
     tables: list[tuple[FieldName, type, SlotNumber, Optionality]]
