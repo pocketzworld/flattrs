@@ -61,7 +61,7 @@ class Converter:
     )
 
     def loads(self, payload: bytes, cl: type[T]) -> T:
-        return self._loads_cache(cl)(payload)
+        return self._loads_cache(cl)(payload, cl)
 
     def dumps(self, model: AttrsInstance, builder: Builder | None = None) -> bytes:
         return self._dumps_cache(model.__class__)(model, builder)
