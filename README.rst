@@ -6,6 +6,7 @@ Changelog:
 23.1.0 (UNRELEASED)
 ~~~~~~~~~~~~~~~~~~~
 * Drop Python 3.9 support.
+* A complete rewrite.
 
 0.1.16 (2023-01-19)
 ~~~~~~~~~~~~~~~~~~~
