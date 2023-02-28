@@ -31,12 +31,13 @@ from ._types import ScalarType
 from .types import UnionVal
 from .typing import get_annotation_and_base
 
-T = TypeVar("T", bound=AttrsInstance)
-
 try:
     from .cflattrs.builder import Builder
 except ImportError:  # NOQA
     from flatbuffers.builder import Builder
+
+T = TypeVar("T", bound=AttrsInstance)
+AddToBuilder: TypeAlias = Callable[[T, Builder, dict[int, int], dict[int, int]], int]
 
 
 @define
@@ -44,57 +45,58 @@ class Converter:
     """A converter for loading and dumping Flatbuffers."""
 
     _dumps_cache: Callable = Factory(
-        lambda self: cache(lambda cls: self._make_dumps(cls)), takes_self=True
+        lambda self: cache(lambda cls: self.make_dumps(cls)), takes_self=True
     )
-    _from_fb_cache: Callable = Factory(
+    _to_fb_cache: Callable[[type[T]], AddToBuilder] = Factory(
+        lambda self: cache(
+            lambda cls: _make_add_to_builder_fn(analyze(cls), self._to_fb_cache)
+        ),
+        takes_self=True,
+    )
+    _from_fb_cache: Callable[[type[T]], Callable] = Factory(
         lambda self: cache(lambda cls: self._make_from_fb(cls)), takes_self=True
     )
     _loads_cache: Callable = Factory(
-        lambda self: cache(lambda cls: self._make_loads(cls)), takes_self=True
+        lambda self: cache(lambda cls: self.make_loads(cls)), takes_self=True
     )
 
     def loads(self, payload: bytes, cl: type[T]) -> T:
-        return self._loads_cache(cl)(payload)
+        return self._loads_cache(cl)(payload, cl)
 
     def dumps(self, model: AttrsInstance, builder: Builder | None = None) -> bytes:
-        builder = Builder(10000) if builder is None else builder
-        offset = self._dumps_cache(model.__class__)(model, builder, {}, {})
-        builder.Finish(offset)
-        return builder.Output()
+        return self._dumps_cache(model.__class__)(model, builder)
 
-    def _make_from_fb(
-        self,
-        cl: type[AttrsInstance],
-    ) -> Callable[[AttrsInstance, Builder, dict, dict], int]:
+    def _make_from_fb(self, cl: type[AttrsInstance]) -> Callable:
         """Generate all necessary functions for a class to work with Flatbuffers."""
-        fb_cls = analyze(cl)
+        return make_from_fb_fn(analyze(cl), self._from_fb_cache)
 
-        from_fb = make_from_fb_fn(fb_cls, self._from_fb_cache)
-        return from_fb
-
-    def _make_loads(self, cl) -> Callable:
+    def make_loads(self, cl: type[T]) -> Callable[[bytes], T]:
+        """Prepare a loading function for a model in advance."""
         from_fb = self._from_fb_cache(cl)
         start_struct = struct.Struct("<I")
 
-        def loads(data: bytes, _from_fb=from_fb, _start_struct=start_struct):
+        def loads(
+            data: bytes, _: type[T], _from_fb=from_fb, _start_struct=start_struct
+        ) -> T:
             start_offset = _start_struct.unpack_from(data, 0)[0]
             return _from_fb(Table(data, start_offset))
 
         return loads
 
-    def _make_dumps(
-        self,
-        cl: type[T],
-    ) -> Callable[[T, Builder, dict, dict], int]:
-        """Generate dumping code for a class to work with Flatbuffers."""
+    def make_dumps(self, cl: type[T]) -> Callable[[T, Builder], int]:
+        """Prepare a dumping function for a model in advance."""
+
         fb_cl = analyze(cl)
 
-        add_to_builder = _make_add_to_builder_fn(fb_cl, self._dumps_cache)
+        add_to_builder = _make_add_to_builder_fn(fb_cl, self._to_fb_cache)
 
-        return add_to_builder
+        def dumps(model: T, builder: Builder | None = None) -> bytes:
+            builder = Builder(10000) if builder is None else builder
+            offset = add_to_builder(model, builder, {}, {})
+            builder.Finish(offset)
+            return builder.Output()
 
-
-AddToBuilder: TypeAlias = Callable[[T, Builder, dict[int, int], dict[int, int]], int]
+        return dumps
 
 
 def _make_add_to_builder_fn(

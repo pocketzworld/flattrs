@@ -27,8 +27,11 @@ from .types import (
 global_converter = Converter()
 dumps: Final = global_converter.dumps
 loads: Final = global_converter.loads
+make_dumps: Final = global_converter.make_dumps
+make_loads: Final = global_converter.make_loads
 
 __all__ = [
+    "dumps",
     "Float",
     "Float32",
     "Float64",
@@ -40,6 +43,9 @@ __all__ = [
     "Int64Enum",
     "Int8",
     "Int8Enum",
+    "loads",
+    "make_dumps",
+    "make_loads",
     "Uint16",
     "Uint16Enum",
     "Uint32",

@@ -4,10 +4,14 @@ from enum import Enum
 from attrs import define
 from pytest import raises
 
-from flattrs import dumps
+from flattrs import dumps, make_dumps, make_loads
+
+from .flattrs.models.common import Common1
 
 
 def test_unsupported_enums() -> None:
+    """Unsupported enums throw errors."""
+
     class TestEnum(str, Enum):
         TEST = "test"
 
@@ -42,3 +46,10 @@ def test_unsupported_enums() -> None:
             test: list[TestEnum] | None
 
         dumps(Test(TestEnum.TEST))
+
+
+def test_make_fns() -> None:
+    """flattrs.make_* work properly."""
+    dumps = make_dumps(Common1)
+    loads = make_loads(Common1)
+    assert loads(dumps(i := Common1("id", 1, 2)), Common1) == i
