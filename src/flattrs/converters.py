@@ -83,7 +83,7 @@ class Converter:
 
         return loads
 
-    def make_dumps(self, cl: type[T]) -> Callable[[T, Builder], int]:
+    def make_dumps(self, cl: type[T]) -> Callable[[T, Builder | None], bytes]:
         """Prepare a dumping function for a model in advance."""
 
         fb_cl = analyze(cl)
