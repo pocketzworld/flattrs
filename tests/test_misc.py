@@ -52,4 +52,4 @@ def test_make_fns() -> None:
     """flattrs.make_* work properly."""
     dumps = make_dumps(Common1)
     loads = make_loads(Common1)
-    assert loads(dumps(i := Common1("id", 1, 2)), Common1) == i
+    assert loads(dumps(i := Common1("id", 1, 2))) == i

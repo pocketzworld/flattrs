@@ -61,7 +61,7 @@ class Converter:
     )
 
     def loads(self, payload: bytes, cl: type[T]) -> T:
-        return self._loads_cache(cl)(payload, cl)
+        return self._loads_cache(cl)(payload)
 
     def dumps(self, model: AttrsInstance, builder: Builder | None = None) -> bytes:
         return self._dumps_cache(model.__class__)(model, builder)
@@ -75,9 +75,7 @@ class Converter:
         from_fb = self._from_fb_cache(cl)
         start_struct = struct.Struct("<I")
 
-        def loads(
-            data: bytes, _: type[T], _from_fb=from_fb, _start_struct=start_struct
-        ) -> T:
+        def loads(data: bytes, _from_fb=from_fb, _start_struct=start_struct) -> T:
             start_offset = _start_struct.unpack_from(data, 0)[0]
             return _from_fb(Table(data, start_offset))
 
