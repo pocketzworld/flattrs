@@ -5,7 +5,7 @@ from enum import Enum
 from re import sub
 from typing import Any, Callable, Final, Type, TypeVar
 
-from attrs import NOTHING, AttrsInstance, fields
+from attrs import NOTHING, AttrsInstance, fields, has
 from flatbuffers.number_types import (
     BoolFlags,
     Float32Flags,
@@ -47,10 +47,9 @@ _T = TypeVar("_T")
 UNION_CL: Final = "_fb_union"
 
 
-def _make_fb_functions(
+def make_flatc_fb_functions(
     cl: type[AttrsInstance],
     num_slots: int,
-    make_from_bytes_fn: Callable[[Any], Callable],
     make_from_fb_fn: Callable,
     field_overrides: list[tuple[FieldName, ScalarType, MaybeDefault]] = [],
     scalar_list_overrides: list[tuple[FieldName, ScalarType]] = [],
@@ -692,19 +691,30 @@ def get_union_mapping_overrides(cl) -> dict[FieldName, UnionMapping]:
     res = {}
     for field in fields(cl):
         if UNION_CL in field.metadata:
-            union_args = get_union_args(field.type)
-            union_dict = {a.__name__: a for a in union_args}
             flatc_mapping = field.metadata[UNION_CL]
             mapping = {}
-            for k, v in flatc_mapping.__dict__.items():
-                if not isinstance(v, int):
-                    continue
-                if v == 0:
-                    mapping[0] = NoneType
-                    continue
-                # Unions may be prefixed by their namespace.
-                k = k.split("_")[-1]
-                mapping[v] = union_dict[k]
+            if has(field.type):
+                # This is a one-class union.
+                for k, v in flatc_mapping.__dict__.items():
+                    if not isinstance(v, int):
+                        continue
+                    if v == 0:
+                        continue
+                    mapping[v] = field.type
+                    break
+            else:
+                union_args = get_union_args(field.type)
+                union_dict = {a.__name__: a for a in union_args}
+
+                for k, v in flatc_mapping.__dict__.items():
+                    if not isinstance(v, int):
+                        continue
+                    if v == 0:
+                        mapping[0] = NoneType
+                        continue
+                    # Unions may be prefixed by their namespace.
+                    k = k.split("_")[-1]
+                    mapping[v] = union_dict[k]
             res[field.name] = mapping
     return res
 

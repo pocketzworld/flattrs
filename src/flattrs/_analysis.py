@@ -109,7 +109,32 @@ def analyze(
         elif ftype is bytes:
             byte_fields.append((field.name, next_slot_idx, False))
         elif has(ftype):
-            tables.append((field.name, field.type, next_slot_idx, False))
+            if field.name in union_overrides:
+                # A single-class union.
+                unions.append(
+                    (
+                        field.name,
+                        (ftype,),
+                        union_overrides[field.name],
+                        next_slot_idx,
+                    )
+                )
+                next_slot_idx += 1
+            else:
+                tables.append((field.name, field.type, next_slot_idx, False))
+        elif (anb := get_annotation_and_base(ftype, UnionVal)) is not None and has(
+            anb[1]
+        ):
+            # Single-class union.
+            unions.append(
+                (
+                    field.name,
+                    (ftype,),
+                    _make_union_mapping((ftype,)),
+                    next_slot_idx,
+                )
+            )
+            next_slot_idx += 1
         elif o := get_optional_arg(ftype):
             # This is an optional field.
             if o is str:
@@ -117,7 +142,30 @@ def analyze(
             elif o is bytes:
                 byte_fields.append((field.name, next_slot_idx, True))
             elif has(o):
-                tables.append((field.name, o, next_slot_idx, True))
+                if field.name in union_overrides:
+                    unions.append(
+                        (
+                            field.name,
+                            (o, NoneType),
+                            union_overrides[field.name],
+                            next_slot_idx,
+                        )
+                    )
+                    next_slot_idx += 1
+                else:
+                    tables.append((field.name, o, next_slot_idx, True))
+            elif (anb := get_annotation_and_base(o, UnionVal)) is not None and has(
+                anb[1]
+            ):
+                unions.append(
+                    (
+                        field.name,
+                        (anb[1], NoneType),
+                        _make_union_mapping((o, NoneType)),
+                        next_slot_idx,
+                    )
+                )
+                next_slot_idx += 1
             elif is_generic_subclass(o, list):
                 arg = o.__args__[0]
                 if arg is str:

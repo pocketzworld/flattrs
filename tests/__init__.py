@@ -5,19 +5,18 @@ from typing import TypeVar
 
 from attrs import define
 
+from ._flatc import UNION_CL as UNION_CL
 from ._flatc import (
-    UNION_CL,
-    _make_fb_functions,
     get_num_slots_from_flatc_module,
     get_scalar_list_types,
     get_scalar_types,
     get_union_mapping_overrides,
-    make_from_bytes_fn,
+    make_flatc_fb_functions,
     make_from_fb_fn,
 )
 
 try:
-    from flattr.cflattr.builder import Builder
+    from flattrs.cflattrs.builder import Builder
 except ImportError:
     from flatbuffers.builder import Builder
 
@@ -31,10 +30,9 @@ def Flatbuffer(fb_cl, frozen: bool = False, repr: bool = True):
         scalars = get_scalar_types(res, res.__fb_module__)
         scalar_list_overrides = get_scalar_list_types(res)
         union_overrides = get_union_mapping_overrides(res)
-        _make_fb_functions(
+        make_flatc_fb_functions(
             res,
             num_slots=num_slots,
-            make_from_bytes_fn=make_from_bytes_fn,
             make_from_fb_fn=make_from_fb_fn,
             field_overrides=scalars,
             scalar_list_overrides=scalar_list_overrides,
