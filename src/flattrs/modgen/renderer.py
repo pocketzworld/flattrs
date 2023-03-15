@@ -267,17 +267,34 @@ class FlatbufferRenderer(Interpreter):
         member_names = []
         to_resolve = set()
         imports = {}
-        for member in tree.children[1:]:
+        members = tree.children[1:]
+        if len(members) == 1:
+            # Special case when there is only one union member.
+            member = members[0]
             member_name = str(member.children[0]).split(".")[-1]
             to_resolve.add(member_name)
+            imports["typing"] = {"Annotated"}
+            imports["flattrs"] = {"UnionVal"}
             if len(member.children) > 1:
                 # This has a union tag attached.
-                imports["typing"] = {"Annotated"}
-                imports["flattrs"] = {"UnionVal"}
                 member_name = (
                     f"Annotated[{member_name}, UnionVal({str(member.children[1])})]"
                 )
+            else:
+                member_name = f"Annotated[{member_name}, UnionVal(1)]"
             member_names.append(member_name)
+        else:
+            for member in tree.children[1:]:
+                member_name = str(member.children[0]).split(".")[-1]
+                to_resolve.add(member_name)
+                if len(member.children) > 1:
+                    # This has a union tag attached.
+                    imports["typing"] = {"Annotated"}
+                    imports["flattrs"] = {"UnionVal"}
+                    member_name = (
+                        f"Annotated[{member_name}, UnionVal({str(member.children[1])})]"
+                    )
+                member_names.append(member_name)
         member_string = " | ".join(member_names)
         return (
             name,

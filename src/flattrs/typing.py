@@ -38,7 +38,7 @@ def get_optional_arg(type) -> Any | None:
     if getattr(type, "__origin__", None) is Union or type.__class__ is UnionType:
         union_args = type.__args__
         if len(union_args) == 2 and NoneType in union_args:
-            return [a for a in union_args if a is not None][0]
+            return [a for a in union_args if a is not NoneType][0]
 
     return None
 

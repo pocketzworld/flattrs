@@ -3,8 +3,13 @@
 
 Changelog:
 ----------
-23.1.0 (UNRELEASED)
-~~~~~~~~~~~~~~~~~~~
+
+23.1.0b6 (UNRELEASED)
+~~~~~~~~~~~~~~~~~~~~~
+* Add special support for unions of a single class.
+
+23.1.0b5 (2023-03-08)
+~~~~~~~~~~~~~~~~~~~~~
 * Drop Python 3.9 support.
 * A complete rewrite.
 

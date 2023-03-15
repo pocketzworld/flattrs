@@ -1,4 +1,4 @@
-from ..common import AllScalars, AllScalarsWithDefaults, Common1
+from ..common import AllScalars, AllScalarsWithDefaults, Common1, Common2
 from ..enums import (
     AllEnums,
     AnInt8Enum,
@@ -23,6 +23,9 @@ from ..tableswithtables import (
     NumberedUnionTable,
     OptionalTable,
     OptionalTableAfterEnum,
+    SingleClassUnion,
+    SingleClassUnionRequiredTable,
+    SingleClassUnionTable,
     UnionOfNestedTables,
     UnionOfOptionalTables,
     UnionOfTables,
@@ -40,6 +43,8 @@ from ..trivial import (
 )
 
 __all__ = [
+    "ASimpleByteEnum",
+    "ASimpleUByteEnum",
     "AllEnums",
     "AllScalars",
     "AllScalarsWithDefaults",
@@ -51,9 +56,8 @@ __all__ = [
     "AnUInt32Enum",
     "AnUInt64Enum",
     "AnUInt8Enum",
-    "ASimpleByteEnum",
-    "ASimpleUByteEnum",
     "Common1",
+    "Common2",
     "CommonUnion",
     "ContainsNamespaced",
     "ContainsTable",
@@ -63,9 +67,9 @@ __all__ = [
     "IgnoredAttributes",
     "JustADouble",
     "JustAFloat",
+    "JustAString",
     "JustAnEnum",
     "JustAnOptionalString",
-    "JustAString",
     "JustBytes",
     "JustOptionalBytes",
     "NestedUnion",
@@ -75,6 +79,9 @@ __all__ = [
     "NumberedUnionTable",
     "OptionalTable",
     "OptionalTableAfterEnum",
+    "SingleClassUnion",
+    "SingleClassUnionRequiredTable",
+    "SingleClassUnionTable",
     "UnionOfNestedTables",
     "UnionOfOptionalTables",
     "UnionOfTables",

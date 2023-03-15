@@ -52,3 +52,15 @@ table OptionalTableAfterEnum {
     an_enum: AnInt8Enum = EIGHT;
     opt_table: Common1;
 }
+
+union SingleClassUnion {
+    Common1,
+}
+
+table SingleClassUnionTable {
+    singleClassUnion: SingleClassUnion;
+}
+
+table SingleClassUnionRequiredTable {
+    singleClassReqUnion: SingleClassUnion (required);
+}

@@ -62,3 +62,16 @@ class ContainsNamespaced:
 class OptionalTableAfterEnum:
     an_enum: AnInt8Enum = AnInt8Enum.EIGHT
     opt_table: Common1 | None = None
+
+
+SingleClassUnion = Annotated[Common1, UnionVal(1)]
+
+
+@define
+class SingleClassUnionTable:
+    singleClassUnion: SingleClassUnion | None = None
+
+
+@define
+class SingleClassUnionRequiredTable:
+    singleClassReqUnion: SingleClassUnion

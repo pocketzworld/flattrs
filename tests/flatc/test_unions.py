@@ -1,11 +1,13 @@
 from hypothesis import given
-from hypothesis.strategies import DrawFn, booleans, composite, sampled_from, text
+from hypothesis.strategies import DrawFn, booleans, composite, none, sampled_from, text
 
 from tests import model_from_bytes, model_to_bytes
 
 from .models_nested import NestedJustAString
 from .models_unions import (
     NumberedUnionTable,
+    SingleClassUnionRequiredTable,
+    SingleClassUnionTable,
     UnionOfNestedTables,
     UnionOfOptionalTables,
 )
@@ -59,4 +61,17 @@ def test_unions_of_optional_tables(inst) -> None:
 
 @given(numbered_union_tables())
 def test_unions_of_numbered_unions(inst: NumberedUnionTable) -> None:
+    assert inst == model_from_bytes(inst.__class__, model_to_bytes(inst))
+
+
+single_class_unions = (common1s() | none()).map(SingleClassUnionTable)
+
+
+@given(single_class_unions)
+def test_single_class_unions(inst: SingleClassUnionTable) -> None:
+    assert inst == model_from_bytes(inst.__class__, model_to_bytes(inst))
+
+
+@given(common1s().map(SingleClassUnionRequiredTable))
+def test_single_class_required_unions(inst: SingleClassUnionRequiredTable) -> None:
     assert inst == model_from_bytes(inst.__class__, model_to_bytes(inst))

@@ -1,7 +1,7 @@
 """Types used internally."""
 from typing import Any, Literal, TypeAlias
 
-from attrs import NOTHING
+from attrs import NOTHING, AttrsInstance
 
 FieldName: TypeAlias = str
 SlotNumber: TypeAlias = int
@@ -11,4 +11,4 @@ ScalarType: TypeAlias = Literal[
 ]
 PythonScalarType: TypeAlias = type[int] | type[bool] | type[float]
 Optionality: TypeAlias = bool
-UnionMapping: TypeAlias = dict[int, type]
+UnionMapping: TypeAlias = dict[int, type[AttrsInstance]]

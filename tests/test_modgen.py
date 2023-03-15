@@ -23,6 +23,7 @@ def assert_dirs_identical(dir_a: Path, dir_b: Path) -> None:
             assert file_a.read_bytes() == file_b.read_bytes()
         else:
             assert not file_b.is_file()
+            assert_dirs_identical(file_a, file_b)
 
 
 def test_compare_to_manual(tmp_path: Path) -> None:
