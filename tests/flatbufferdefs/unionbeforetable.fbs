@@ -1,0 +1,16 @@
+union EarlyUnion {
+    OnlyString,
+    OnlyString2,
+}
+
+table OnlyString {
+    str: string (required);
+}
+
+table OnlyString2 {
+    str: string (required);
+}
+
+table OnlyStringAfterUnion {
+    onlyString: EarlyUnion (required);
+}

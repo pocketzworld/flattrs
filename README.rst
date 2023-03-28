@@ -4,7 +4,12 @@
 Changelog:
 ----------
 
-23.1.0b6 (UNRELEASED)
+23.1.0b7 (2023-03-28)
+~~~~~~~~~~~~~~~~~~~~~
+* Implement reordering of unions in the generated code where required.
+* Internal refactor for more immutability.
+
+23.1.0b6 (2023-03-15)
 ~~~~~~~~~~~~~~~~~~~~~
 * Add special support for unions of a single class.
 

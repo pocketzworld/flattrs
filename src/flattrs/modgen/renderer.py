@@ -2,16 +2,17 @@ from enum import Enum as PythonEnum
 from keyword import iskeyword
 from pathlib import Path
 from traceback import print_exception
-from typing import Final, TypeAlias
+from typing import Final, Mapping, Sequence, Set, TypeAlias
 
-from attrs import Factory, define, evolve, frozen
+from attrs import define, evolve, field, frozen
+from immutables import Map
 from lark import ParseTree, Token, Tree
 from lark.visitors import Interpreter
 
 from .._types import FieldName, Optionality
 from .parser import parser
 
-Imports: TypeAlias = dict[str, set[str]]
+Imports: TypeAlias = Mapping[str, Set[str]]
 Script: TypeAlias = list[str]
 ImportableName: TypeAlias = str
 MISSING: Final = "$MISSING"
@@ -29,23 +30,23 @@ NO_REPR = Attribute("norepr", namespace="flattrs")
 FROZEN = Attribute("immutable", namespace="flattrs")
 
 
-@define
+@frozen
 class Table:
-    @define
+    @frozen
     class Field:
         name: FieldName
         type: str
         default: str
         is_optional: Optionality
         namespace_prefix: str | None = None
-        attrs: list[Attribute] = Factory(list)
+        attrs: Sequence[Attribute] = field(factory=tuple, converter=tuple)
 
     name: ImportableName
-    field_defs: list[Field]
-    imports: Imports
-    attrs: list[Attribute]
+    field_defs: Sequence[Field] = field(converter=tuple)
+    imports: Imports = field(converter=Map)
+    attrs: Sequence[Attribute] = field(converter=tuple)
 
-    def adjust_enums(self, enums: set[str]) -> None:
+    def adjust_enums(self, enums: set[str]) -> "Table":
         """
         Table fields that are enums must not be optional.
 
@@ -53,7 +54,7 @@ class Table:
 
         In addition, we apply the keyword remap to the default, if needed.
         """
-        self.field_defs = [
+        field_defs = [
             f
             if f.type not in enums
             else evolve(
@@ -65,8 +66,9 @@ class Table:
             )
             for f in self.field_defs
         ]
+        return evolve(self, field_defs=field_defs)
 
-    def adjust_defaults(self) -> None:
+    def adjust_defaults(self) -> "Table":
         """Insert default values as possible, starting from the back.
 
         This is to preserve backwards comp when optional fields are added.
@@ -85,9 +87,11 @@ class Table:
                     # We need to stop adding defaults.
                     can_add_defaults = False
             new_field_defs.append(field_def)
-        self.field_defs = list(reversed(new_field_defs))
+        return evolve(self, field_defs=list(reversed(new_field_defs)))
 
-    def adjust_attribute_namespaces(self, namespace_map: dict[str, set[str]]) -> None:
+    def adjust_attribute_namespaces(
+        self, namespace_map: dict[str, set[str]]
+    ) -> "Table":
         new_table_attrs = []
         for attr in self.attrs:
             if attr.namespace == MISSING:
@@ -98,7 +102,7 @@ class Table:
                 else:
                     raise Exception(f"Couldn't resolve attribute {attr}")
                 new_table_attrs.append(attr)
-        self.attrs = new_table_attrs
+        new_field_defs = []
         for field_def in self.field_defs:
             new_attrs = []
             for attr in field_def.attrs:
@@ -112,7 +116,23 @@ class Table:
                             f"{self.name}: Couldn't resolve attribute {attr}"
                         )
                 new_attrs.append(attr)
-            field_def.attrs = new_attrs
+            new_field_defs.append(evolve(field_def, attrs=new_attrs))
+        return evolve(self, attrs=new_table_attrs, field_defs=new_field_defs)
+
+    def adjust_imports(self) -> "Table":
+        """This needs to be called after `adjust_attribute_namespace` for correctness."""
+        is_frozen = FROZEN in self.attrs
+        imports = merge_imports(
+            self.imports, {"attrs": {"define"} if not is_frozen else {"frozen"}}
+        )
+        for f in self.field_defs:
+            has_repr = True
+            if f.type == "bytes" or NO_REPR in f.attrs:
+                has_repr = False
+            needs_field = not has_repr
+            if needs_field:
+                imports = merge_imports(imports, {"attrs": {"field"}})
+        return evolve(self, imports=imports)
 
     def render(self) -> Script:
         # This can be a little tricky, since we need to use `attrs.field`
@@ -122,9 +142,6 @@ class Table:
             "@define" if not is_frozen else "@frozen",
             f"class {self.name}:",
         ]
-        self.imports = merge_imports(
-            self.imports, {"attrs": {"define"} if not is_frozen else {"frozen"}}
-        )
         field_lines = []
         for f in self.field_defs:
             def_str = ""
@@ -135,13 +152,12 @@ class Table:
             needs_field = not has_repr
 
             if needs_field:
-                self.imports = merge_imports(self.imports, {"attrs": {"field"}})
                 field_args = []
                 if f.default:
                     field_args.append(("default", f.default))
                 if not has_repr:
                     field_args.append(("repr", "False"))
-                field_str = f", ".join(f"{k}={v}" for k, v in field_args)
+                field_str = ", ".join(f"{k}={v}" for k, v in field_args)
                 def_str = f" = field({field_str})"
             elif f.default:
                 def_str = f" = {f.default}"
@@ -168,27 +184,84 @@ class Enum:
         return lines
 
 
+@frozen
+class Union:
+    name: str
+    members: Sequence[tuple[str, int | None]] = field(converter=tuple)
+
+    def render(self) -> Script:
+        member_names = []
+        to_resolve = set()
+        if len(self.members) == 1:
+            # Special case when there is only one union member.
+            member_name, union_val = self.members[0]
+            to_resolve.add(member_name)
+            if union_val is not None:
+                # This has a union tag attached.
+                member_name = f"Annotated[{member_name}, UnionVal({union_val})]"
+            else:
+                member_name = f"Annotated[{member_name}, UnionVal(1)]"
+            member_names.append(member_name)
+        else:
+            for member_name, union_val in self.members:
+                to_resolve.add(member_name)
+                if union_val is not None:
+                    # This has a union tag attached.
+                    member_name = f"Annotated[{member_name}, UnionVal({union_val})]"
+                member_names.append(member_name)
+        member_string = " | ".join(member_names)
+        return [f"{self.name} = {member_string}"]
+
+
 @define
 class Module:
     namespace: str | None
     path: Path
     imports: Imports
-    importables: list[tuple[ImportableName, Script | Table | Enum | Attribute]]
+    importables: list[tuple[ImportableName, Union | Table | Enum | Attribute]]
 
     def render(self) -> str:
         body = ""
-        imports = self.imports
+        # We potentially need to reorder since unions must refer to existing
+        # names.
+        tables_to_indices = {}
+        for ix, item in enumerate(self.importables):
+            if isinstance(item[1], Table):
+                tables_to_indices[item[0]] = ix
+
+        render_after: dict[Table, list[tuple[ImportableName, Union]]] = {}
+
+        for ix, item in enumerate(list(self.importables)):
+            if isinstance(item[1], Union):
+                member_indices = [
+                    tables_to_indices.get(n[0], -1) for n in item[1].members
+                ]
+                if member_indices:
+                    largest_child_idx = max(member_indices)
+                    if largest_child_idx > ix:
+                        render_after.setdefault(
+                            self.importables[largest_child_idx][1], []
+                        ).append(item)
+                        self.importables.remove(item)
+
         for item in self.importables:
             if isinstance(item[1], Table):
                 body += "\n".join(item[1].render())
-                imports = merge_imports(imports, item[1].imports)
+                post_unions = render_after.get(item[1], [])
+                if post_unions:
+                    body += "\n\n\n"
+                for union in post_unions:
+                    rendered = "\n".join(union[1].render())
+                    body += rendered
+                    body += "\n\n\n"
             elif isinstance(item[1], Enum):
                 body += "\n".join(item[1].render())
+                body += "\n"
             elif isinstance(item[1], Attribute):
                 # Attributes don't get rendered.
                 pass
             else:
-                body += "\n".join(item[1])
+                body += "\n".join(item[1].render())
             body += "\n\n\n"
         if not body.strip():
             # We don't render empty files.
@@ -198,8 +271,7 @@ class Module:
         for _, item in self.importables:
             if isinstance(item, Table):
                 imports = merge_imports(imports, item.imports)
-        self.imports = imports
-        self.imports.pop(MISSING, None)
+        imports = {k: v for k, v in imports.items() if k != MISSING}
 
         script = (
             "from __future__ import annotations\n\n"
@@ -262,7 +334,7 @@ class FlatbufferRenderer(Interpreter):
         name = str(tree.children[0])
         return (name, Attribute(name), {})
 
-    def union(self, tree: ParseTree) -> tuple[ImportableName, Script, Imports]:
+    def union(self, tree: ParseTree) -> tuple[ImportableName, Union, Imports]:
         name = str(tree.children[0])
         member_names = []
         to_resolve = set()
@@ -277,12 +349,9 @@ class FlatbufferRenderer(Interpreter):
             imports["flattrs"] = {"UnionVal"}
             if len(member.children) > 1:
                 # This has a union tag attached.
-                member_name = (
-                    f"Annotated[{member_name}, UnionVal({str(member.children[1])})]"
-                )
+                member_names.append((member_name, int(member.children[1])))
             else:
-                member_name = f"Annotated[{member_name}, UnionVal(1)]"
-            member_names.append(member_name)
+                member_names.append((member_name, None))
         else:
             for member in tree.children[1:]:
                 member_name = str(member.children[0]).split(".")[-1]
@@ -291,14 +360,12 @@ class FlatbufferRenderer(Interpreter):
                     # This has a union tag attached.
                     imports["typing"] = {"Annotated"}
                     imports["flattrs"] = {"UnionVal"}
-                    member_name = (
-                        f"Annotated[{member_name}, UnionVal({str(member.children[1])})]"
-                    )
-                member_names.append(member_name)
-        member_string = " | ".join(member_names)
+                    member_names.append((member_name, int(member.children[1])))
+                else:
+                    member_names.append((member_name, None))
         return (
             name,
-            [f"{name} = {member_string}"],
+            Union(name, member_names),
             {MISSING: to_resolve} | imports,
         )
 
@@ -337,7 +404,7 @@ class FlatbufferRenderer(Interpreter):
                     for c in child.children
                 )
         field_defs = [self.table_field(c) for c in tree.find_data("table_field")]
-        imports = {}
+        imports = Map()
         for _, _, _, _, field_imports, _ in field_defs:
             imports = merge_imports(imports, field_imports)
         fields = []
@@ -354,14 +421,15 @@ class FlatbufferRenderer(Interpreter):
                 )
             )
 
+        table = Table(
+            name,
+            fields,
+            imports,
+            table_attributes,
+        )
         return (
             name,
-            Table(
-                name,
-                fields,
-                imports,
-                table_attributes,
-            ),
+            table,
             imports,
         )
 
@@ -391,7 +459,7 @@ class FlatbufferRenderer(Interpreter):
             namespace_prefix, type = (
                 full_type.rsplit(".", 1) if "." in full_type else ("", full_type)
             )
-            imports.setdefault(MISSING, []).append(str(type))
+            imports[MISSING] = imports.get(MISSING, frozenset()) | {str(type)}
             for def_child in tree.find_data("table_field_default"):
                 default = str(def_child.children[0])
         else:
@@ -410,7 +478,9 @@ class FlatbufferRenderer(Interpreter):
                             if "." in inner_type
                             else ("", inner_type)
                         )
-                        imports.setdefault(MISSING, []).append(str(inner_type))
+                        imports[MISSING] = imports.get(MISSING, frozenset()) | {
+                            str(inner_type)
+                        }
                     type = f"list[{inner_type}]"
                 default = ""
             elif full_type.data == "string":
@@ -423,7 +493,7 @@ class FlatbufferRenderer(Interpreter):
                     is_scalar = True
                     type = TYPE_MAP[type]
                     if type not in ("int", "float", "bool", "str", "float"):
-                        imports["flattrs"] = {type}
+                        imports["flattrs"] = frozenset([type])
 
                 default = ""
                 for def_tree in tree.find_data("table_field_default"):
@@ -459,7 +529,7 @@ def render_directory(
     importables_to_module: dict[str, Module] = {}
     namespace_to_attributes: dict[str, set[str]] = {}
     enums = set()
-    tables: list[Table] = []
+    modules: list[Module] = []
     for file in input.rglob("*.fbs"):
         rel_path = file.relative_to(input).with_suffix(".py")
         try:
@@ -467,12 +537,11 @@ def render_directory(
         except Exception as exc:
             print(f"While parsing {file}: {exc}")
             print_exception(exc)
+        modules.append(pm)
         for name, importable in pm.importables:
             importables_to_module[name] = pm
             if isinstance(importable, Enum):
                 enums.add(importable.name)
-            elif isinstance(importable, Table):
-                tables.append(importable)
             elif isinstance(importable, Attribute):
                 namespace_to_attributes.setdefault(pm.namespace or "", set()).add(
                     importable.name
@@ -480,19 +549,24 @@ def render_directory(
         per_namespace.setdefault(pm.namespace, []).append(pm)
 
     # We can resolve attribute namespaces now.
-    for table in tables:
-        table.adjust_attribute_namespaces(namespace_to_attributes)
-
     # At this point, we know which importables are enums.
     # Tables referencing those need to have their types adjusted.
-    for table in tables:
-        table.adjust_enums(enums)
-
     # For each table, add defaults as much as possible,
     # starting from backwards. This is so fields added at the end
     # keep backwards comp.
-    for table in tables:
-        table.adjust_defaults()
+    for module in modules:
+        module.importables = [
+            (
+                name,
+                i.adjust_attribute_namespaces(namespace_to_attributes)
+                .adjust_enums(enums)
+                .adjust_defaults()
+                .adjust_imports()
+                if isinstance(i, Table)
+                else i,
+            )
+            for name, i in module.importables
+        ]
 
     # Now we write the modules to disk.
     output.mkdir(exist_ok=True, parents=True)
@@ -598,10 +672,10 @@ def render(input: Path, output: Path, gen_namespace_exports: bool = False) -> No
 def merge_imports(a: Imports, b: Imports) -> Imports:
     res: Imports = {}
     for k, v in a.items():
-        res.setdefault(k, set()).update(v)
+        res[k] = frozenset(res.get(k, frozenset()) | v)
     for k, v in b.items():
-        res.setdefault(k, set()).update(v)
-    return res
+        res[k] = frozenset(res.get(k, frozenset()) | v)
+    return Map(res)
 
 
 def map_python_keywords(name: str) -> str:

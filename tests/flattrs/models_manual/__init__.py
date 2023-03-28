@@ -1,4 +1,5 @@
 from .includes import Includes
+from .unionbeforetable import OnlyString, OnlyString2, OnlyStringAfterUnion
 from .vectors import (
     ByteArrayTable,
     OptionalByteArrayTable,
@@ -24,6 +25,9 @@ from .vectors import (
 __all__ = [
     "ByteArrayTable",
     "Includes",
+    "OnlyString",
+    "OnlyString2",
+    "OnlyStringAfterUnion",
     "OptVectorOfEnums",
     "OptionalByteArrayTable",
     "OptionalSeqVectorOfStrings",
