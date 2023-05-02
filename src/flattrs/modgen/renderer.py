@@ -12,9 +12,11 @@ from lark.visitors import Interpreter
 from .._types import FieldName, Optionality
 from .parser import parser
 
-Imports: TypeAlias = Mapping[str, Set[str]]
-Script: TypeAlias = list[str]
 ImportableName: TypeAlias = str
+NamespacePrefix: TypeAlias = str
+Imports: TypeAlias = Mapping[str, Set[str]]
+UnresolvedImports: TypeAlias = Set[tuple[NamespacePrefix, ImportableName]]
+Script: TypeAlias = list[str]
 MISSING: Final = "$MISSING"
 
 
@@ -45,6 +47,7 @@ class Table:
     field_defs: Sequence[Field] = field(converter=tuple)
     imports: Imports = field(converter=Map)
     attrs: Sequence[Attribute] = field(converter=tuple)
+    unresolved_imports: UnresolvedImports = field(converter=frozenset)
 
     def adjust_enums(self, enums: set[str]) -> "Table":
         """
@@ -191,11 +194,9 @@ class Union:
 
     def render(self) -> Script:
         member_names = []
-        to_resolve = set()
         if len(self.members) == 1:
             # Special case when there is only one union member.
             member_name, union_val = self.members[0]
-            to_resolve.add(member_name)
             if union_val is not None:
                 # This has a union tag attached.
                 member_name = f"Annotated[{member_name}, UnionVal({union_val})]"
@@ -204,7 +205,6 @@ class Union:
             member_names.append(member_name)
         else:
             for member_name, union_val in self.members:
-                to_resolve.add(member_name)
                 if union_val is not None:
                     # This has a union tag attached.
                     member_name = f"Annotated[{member_name}, UnionVal({union_val})]"
@@ -219,6 +219,7 @@ class Module:
     path: Path
     imports: Imports
     importables: list[tuple[ImportableName, Union | Table | Enum | Attribute]]
+    unresolved_imports: UnresolvedImports
 
     def render(self) -> str:
         body = ""
@@ -285,7 +286,7 @@ class Module:
         return script
 
 
-class FlatbufferRenderer(Interpreter):
+class FlatbufferInterpreter(Interpreter):
     """Transform FlatBuffer code into Python code.
 
     The rendering needs to be done in several phases, since imports
@@ -298,7 +299,7 @@ class FlatbufferRenderer(Interpreter):
         for t in tree.find_data("namespace"):
             namespace = str(t.children[0])
         importables: list[
-            tuple[ImportableName, Script | Table | Enum | Attribute, Imports]
+            tuple[ImportableName, Union | Table | Enum | Attribute, Imports]
         ] = [
             self.visit(t)
             for t in tree.find_pred(
@@ -306,26 +307,36 @@ class FlatbufferRenderer(Interpreter):
             )
         ]
         imports = {}
+        unresolved_imports = frozenset()
         res = []
 
         local_names = {i[0] for i in importables}
 
-        for name, script_or_table, imps in importables:
-            if isinstance(script_or_table, Attribute):
-                script_or_table = evolve(script_or_table, namespace=namespace)
-            res.append((name, script_or_table))
+        for name, importable, imps in importables:
+            if isinstance(importable, Attribute):
+                importable = evolve(importable, namespace=namespace)
+            res.append((name, importable))
             for k, v in imps.items():
-                if k == MISSING:
-                    for val in v:
-                        if val in local_names:
-                            continue
-                        imports.setdefault(k, set()).add(val)
-                else:
+                if k != MISSING:
                     if k not in imports:
                         imports[k] = set()
-                    imports[k] |= v
-
-        return Module(namespace, filename, imports, res)
+                    imports[k] |= v - local_names
+            if isinstance(importable, Union):
+                for k, v in imps.items():
+                    if k == MISSING:
+                        for val in v:
+                            if val in local_names:
+                                continue
+                            parts = val.rsplit(".", 1)
+                            if len(parts) == 1:
+                                unresolved_imports |= {("", val)}
+                            else:
+                                unresolved_imports |= {tuple(parts)}
+            if isinstance(importable, Table):
+                unresolved_imports |= {
+                    i for i in importable.unresolved_imports if i[1] not in local_names
+                }
+        return Module(namespace, filename, imports, res, unresolved_imports)
 
     def namespace(self, _: ParseTree) -> tuple[list[str], Imports]:
         return [], {}
@@ -343,8 +354,10 @@ class FlatbufferRenderer(Interpreter):
         if len(members) == 1:
             # Special case when there is only one union member.
             member = members[0]
-            member_name = str(member.children[0]).split(".")[-1]
+            member_name = str(member.children[0])
             to_resolve.add(member_name)
+            member_name = member_name.split(".")[-1]
+
             imports["typing"] = {"Annotated"}
             imports["flattrs"] = {"UnionVal"}
             if len(member.children) > 1:
@@ -354,8 +367,9 @@ class FlatbufferRenderer(Interpreter):
                 member_names.append((member_name, None))
         else:
             for member in tree.children[1:]:
-                member_name = str(member.children[0]).split(".")[-1]
+                member_name = str(member.children[0])
                 to_resolve.add(member_name)
+                member_name = member_name.split(".")[-1]
                 if len(member.children) > 1:
                     # This has a union tag attached.
                     imports["typing"] = {"Annotated"}
@@ -405,8 +419,10 @@ class FlatbufferRenderer(Interpreter):
                 )
         field_defs = [self.table_field(c) for c in tree.find_data("table_field")]
         imports = Map()
-        for _, _, _, _, field_imports, _ in field_defs:
+        urs = set()
+        for _, _, _, _, field_imports, unresolved_imports, _ in field_defs:
             imports = merge_imports(imports, field_imports)
+            urs |= unresolved_imports
         fields = []
         for f in field_defs:
             is_optional = Attribute("required", namespace=None) not in f[3]
@@ -416,17 +432,12 @@ class FlatbufferRenderer(Interpreter):
                     f[1],
                     f[2],
                     is_optional,
-                    f[5] or None,
+                    f[6] or None,
                     f[3],
                 )
             )
 
-        table = Table(
-            name,
-            fields,
-            imports,
-            table_attributes,
-        )
+        table = Table(name, fields, imports, table_attributes, urs)
         return (
             name,
             table,
@@ -435,8 +446,9 @@ class FlatbufferRenderer(Interpreter):
 
     def table_field(
         self, tree: ParseTree
-    ) -> tuple[FieldName, str, str, list[Attribute], Imports, str]:
+    ) -> tuple[FieldName, str, str, list[Attribute], Imports, UnresolvedImports, str]:
         imports = {}
+        unresolved_imports = set()
         name = str(tree.children[0])
         full_type = tree.children[1]
         attributes = []
@@ -459,7 +471,7 @@ class FlatbufferRenderer(Interpreter):
             namespace_prefix, type = (
                 full_type.rsplit(".", 1) if "." in full_type else ("", full_type)
             )
-            imports[MISSING] = imports.get(MISSING, frozenset()) | {str(type)}
+            unresolved_imports.add((namespace_prefix, type))
             for def_child in tree.find_data("table_field_default"):
                 default = str(def_child.children[0])
         else:
@@ -478,9 +490,7 @@ class FlatbufferRenderer(Interpreter):
                             if "." in inner_type
                             else ("", inner_type)
                         )
-                        imports[MISSING] = imports.get(MISSING, frozenset()) | {
-                            str(inner_type)
-                        }
+                        unresolved_imports.add((namespace_prefix, str(inner_type)))
                     type = f"list[{inner_type}]"
                 default = ""
             elif full_type.data == "string":
@@ -505,14 +515,22 @@ class FlatbufferRenderer(Interpreter):
                         def_val = f"{type}.{def_val}"
                     default = def_val
 
-        return name, type, default, attributes, imports, namespace_prefix
+        return (
+            name,
+            type,
+            default,
+            attributes,
+            imports,
+            unresolved_imports,
+            namespace_prefix,
+        )
 
     def table_field_default(self):
         pass
 
 
 def parse_module(module_tree: Tree, file: Path) -> Module:
-    r = FlatbufferRenderer()
+    r = FlatbufferInterpreter()
     parsed_module = r.module(module_tree, file)
     return parsed_module
 
@@ -526,7 +544,7 @@ def render_directory(
     """
     # First we parse, then we resolve imports, then we write.
     per_namespace: dict[str | None, list[Module]] = {}
-    importables_to_module: dict[str, Module] = {}
+    importables_to_module: dict[str, list[Module]] = {}
     namespace_to_attributes: dict[str, set[str]] = {}
     enums = set()
     modules: list[Module] = []
@@ -538,8 +556,9 @@ def render_directory(
             print(f"While parsing {file}: {exc}")
             print_exception(exc)
         modules.append(pm)
+        # Gather importables so we can resolve them later.
         for name, importable in pm.importables:
-            importables_to_module[name] = pm
+            importables_to_module.setdefault(name, []).append(pm)
             if isinstance(importable, Enum):
                 enums.add(importable.name)
             elif isinstance(importable, Attribute):
@@ -574,9 +593,21 @@ def render_directory(
     for pm_list in per_namespace.values():
         for pm in pm_list:
             pm_path = pm.path
-            missing_imports = pm.imports.pop(MISSING, set())
-            for importable in missing_imports:
-                module = importables_to_module[importable]
+            for ns, importable in pm.unresolved_imports:
+                for module in importables_to_module[importable]:
+                    if pm.namespace == module.namespace:
+                        # Referencing a symbol in the same namespace.
+                        break
+                    if not ns:
+                        if not module.namespace:
+                            break
+                    else:
+                        # A namespace is referenced.
+                        if module.namespace is not None:
+                            if module.namespace.endswith(ns):
+                                break
+                else:
+                    raise Exception(f"Cannot resolve {ns}.{importable} in {pm_path}")
 
                 if module.path.parent == pm_path.parent:
                     rel_path = f".{module.path.stem}"

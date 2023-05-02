@@ -4,6 +4,10 @@
 Changelog:
 ----------
 
+23.1.0b8 (2023-05-03)
+~~~~~~~~~~~~~~~~~~~~~
+* Greatly improve namespace handling.
+
 23.1.0b7 (2023-03-28)
 ~~~~~~~~~~~~~~~~~~~~~
 * Implement reordering of unions in the generated code where required.
