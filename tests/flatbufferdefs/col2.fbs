@@ -1,0 +1,5 @@
+include "collisions/Ns2.fbs";
+
+table CollidingTables2 {
+    ns1: Ns2.Collision (required);
+}

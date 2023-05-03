@@ -1,0 +1,5 @@
+namespace Ns2;
+
+table Collision {
+  x: float;
+}

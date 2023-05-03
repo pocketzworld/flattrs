@@ -1,7 +1,7 @@
 include "common.fbs";
+include "enums.fbs";
 include "nested/nested_trivial.fbs";
 include "geometry/Vec3.fbs";
-include "enums.fbs";
 
 namespace flattrs_test;
 

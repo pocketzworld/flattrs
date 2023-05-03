@@ -1,3 +1,5 @@
+from .col1 import CollidingTables
+from .col2 import CollidingTables2
 from .includes import Includes
 from .unionbeforetable import OnlyString, OnlyString2, OnlyStringAfterUnion
 from .vectors import (
@@ -24,6 +26,8 @@ from .vectors import (
 
 __all__ = [
     "ByteArrayTable",
+    "CollidingTables",
+    "CollidingTables2",
     "Includes",
     "OnlyString",
     "OnlyString2",
