@@ -13,7 +13,7 @@ setup(
     name="flattrs",
     long_description="Flatbuffers support for Python",
     long_description_content_type="text/x-rst",
-    version="23.1.0.b7",
+    version="23.1.0.b8",
     install_requires=[
         "attrs",
         "flatbuffers==23.1.4",
