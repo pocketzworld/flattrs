@@ -1,10 +1,9 @@
-from attrs import asdict
+from attrs import asdict, resolve_types
 from cattrs import structure, unstructure
 from hypothesis import given
 from hypothesis.strategies import booleans, lists, tuples
 
 from flattrs import dumps, loads
-from flattrs.typing import resolve_types
 from tests import model_from_bytes, model_to_bytes
 
 from ..flatc import models_vectors as models_vectors_flatc
