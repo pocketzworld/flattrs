@@ -4,9 +4,9 @@
 Changelog:
 ----------
 
-23.1.0b9 (UNRELEASED)
+23.1.0b9 (2023-05-17)
 ~~~~~~~~~~~~~~~~~~~~~
-* Set the minimum _attrs_ version.
+* Set the minimum _attrs_ version to ensure we get the right `attrs.resolve_types`.
 
 23.1.0b8 (2023-05-03)
 ~~~~~~~~~~~~~~~~~~~~~
