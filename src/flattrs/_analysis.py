@@ -1,7 +1,7 @@
 """Types used internally."""
 from enum import IntEnum
 
-from attrs import NOTHING, AttrsInstance, fields, frozen, has
+from attrs import NOTHING, AttrsInstance, fields, frozen, has, resolve_types
 
 from ._consts import ENUM_TYPE_TO_SCALAR_TYPE, HELPER_TYPE_TO_SCALAR_TYPE, NoneType
 from ._types import (
@@ -22,7 +22,6 @@ from .types import (
     Int16Enum,
     Int32,
     Int32Enum,
-    Int64,
     Int64Enum,
     ScalarMarker,
     Uint8,
@@ -41,7 +40,6 @@ from .typing import (
     get_union_args,
     is_generic_subclass,
     is_subclass,
-    resolve_types,
 )
 
 

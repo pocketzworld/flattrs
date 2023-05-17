@@ -4,6 +4,10 @@
 Changelog:
 ----------
 
+23.1.0b9 (UNRELEASED)
+~~~~~~~~~~~~~~~~~~~~~
+* Set the minimum _attrs_ version.
+
 23.1.0b8 (2023-05-03)
 ~~~~~~~~~~~~~~~~~~~~~
 * Greatly improve namespace handling.
