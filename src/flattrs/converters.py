@@ -38,6 +38,7 @@ except ImportError:  # NOQA
 
 T = TypeVar("T", bound=AttrsInstance)
 AddToBuilder: TypeAlias = Callable[[T, Builder, dict[int, int], dict[int, int]], int]
+start_struct: Final = struct.Struct("<I")
 
 
 @define
@@ -73,10 +74,11 @@ class Converter:
     def make_loads(self, cl: type[T]) -> Callable[[bytes], T]:
         """Prepare a loading function for a model in advance."""
         from_fb = self._from_fb_cache(cl)
-        start_struct = struct.Struct("<I")
 
-        def loads(data: bytes, _from_fb=from_fb, _start_struct=start_struct) -> T:
-            start_offset = _start_struct.unpack_from(data, 0)[0]
+        def loads(
+            data: bytes, _from_fb=from_fb, _unpack_from=start_struct.unpack_from
+        ) -> T:
+            start_offset = _unpack_from(data, 0)[0]
             return _from_fb(Table(data, start_offset))
 
         return loads
