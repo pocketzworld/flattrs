@@ -13,7 +13,7 @@ setup(
     name="flattrs",
     long_description="Flatbuffers support for Python",
     long_description_content_type="text/x-rst",
-    version="23.1.0.b9",
+    version="23.1.0b10",
     install_requires=[
         "attrs >= 23.1.0",
         "flatbuffers==23.1.4",
@@ -29,7 +29,7 @@ setup(
         "dev": [
             "pytest",
             "hypothesis",
-            "cython==0.29.32",
+            "cython==3.0.12",
             "coverage",
             "cattrs",
             "nox",

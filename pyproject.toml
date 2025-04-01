@@ -1,5 +1,9 @@
+[project]
+name= "flattrs"
+version= "23.1.0b10"
+
 [build-system]
-requires = ["setuptools", "wheel", "cython==0.29.32"]
+requires = ["setuptools", "wheel", "cython==3.0.12"]
 
 [tool.isort]
 profile = "black"
