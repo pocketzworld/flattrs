@@ -1,6 +1,7 @@
-.PHONY: flatc flattrs
+.PHONY: flatc flattrs wheels wheels-manylinux wheels-musllinux
 
-WHEEL_DOCKER_IMAGE := quay.io/pypa/manylinux_2_28_x86_64
+MANYLINUX_DOCKER_IMAGE := quay.io/pypa/manylinux_2_28_x86_64
+MUSLLINUX_DOCKER_IMAGE := quay.io/pypa/musllinux_1_2_x86_64
 
 flatc:
 	flatc -p -o flatc -I tests/flatbufferdefs/ tests/flatbufferdefs/*/*.fbs
@@ -15,10 +16,20 @@ flattrs:
 coverage:
 	coverage run --source=flattrs -m pytest
 
-wheels:
+# Both are needed: manylinux for glibc images, musllinux for alpine. An alpine
+# image with no musllinux wheel silently falls back to the pure-Python
+# flatbuffers builder, which rejects values the compiled one coerces.
+wheels: wheels-manylinux wheels-musllinux
+
+wheels-manylinux:
 	rm -rf wheelhouse build &&\
-	docker pull $(WHEEL_DOCKER_IMAGE) &&\
-	docker run --rm -v `pwd`:/io $(WHEEL_DOCKER_IMAGE) /io/build-wheels.sh
+	docker pull $(MANYLINUX_DOCKER_IMAGE) &&\
+	docker run --rm -v `pwd`:/io $(MANYLINUX_DOCKER_IMAGE) /io/build-wheels.sh
+
+wheels-musllinux:
+	rm -rf build &&\
+	docker pull $(MUSLLINUX_DOCKER_IMAGE) &&\
+	docker run --rm -v `pwd`:/io $(MUSLLINUX_DOCKER_IMAGE) /io/build-wheels.sh
 
 compile:
 	python setup.py build_ext --inplace
