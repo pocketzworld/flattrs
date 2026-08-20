@@ -15,3 +15,16 @@ source = ["src", ".nox/tests*/**/site-packages"]
 [tool.coverage.report]
 show_missing = true
 skip_covered = true
+
+[tool.cibuildwheel]
+# Free-threaded builds are skipped; Cython doesn't support them yet.
+build = "cp310-* cp311-* cp312-* cp313-*"
+skip = "*t-*"
+manylinux-x86_64-image = "manylinux_2_28"
+manylinux-aarch64-image = "manylinux_2_28"
+
+# Run the test suite against the compiled extension on the target arch.
+test-extras = "dev"
+# test_compare_to_manual shells out to `python` and regenerates models; it
+# tests the generator, not the compiled extension.
+test-command = "cd {project} && python -m pytest tests -q -p no:cacheprovider --deselect tests/test_modgen.py::test_compare_to_manual"

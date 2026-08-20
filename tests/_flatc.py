@@ -696,7 +696,7 @@ def get_union_mapping_overrides(cl) -> dict[FieldName, UnionMapping]:
             if has(field.type):
                 # This is a one-class union.
                 for k, v in flatc_mapping.__dict__.items():
-                    if not isinstance(v, int):
+                    if not isinstance(v, int) or k.startswith("__"):
                         continue
                     if v == 0:
                         continue
@@ -706,8 +706,9 @@ def get_union_mapping_overrides(cl) -> dict[FieldName, UnionMapping]:
                 union_args = get_union_args(field.type)
                 union_dict = {a.__name__: a for a in union_args}
 
+                # Skip dunders; 3.13 adds an int __firstlineno__ to __dict__.
                 for k, v in flatc_mapping.__dict__.items():
-                    if not isinstance(v, int):
+                    if not isinstance(v, int) or k.startswith("__"):
                         continue
                     if v == 0:
                         mapping[0] = NoneType

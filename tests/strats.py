@@ -1,6 +1,4 @@
-from struct import pack, unpack
-
-from hypothesis.strategies import DrawFn, composite, floats, integers
+from hypothesis.strategies import floats, integers
 
 uint8s = integers(0, 2**8 - 1)
 uint16s = integers(0, 2**16 - 1)
@@ -15,10 +13,6 @@ int64s = integers(-(2**63), (2**63) - 1)
 float64s = floats(allow_nan=False)
 
 
-@composite
-def float32s(draw: DrawFn) -> float:
-    val = draw(float64s)
-    return unpack("f", pack("f", val))[0]
-
-
-float32s = float32s()
+# width=32 keeps draws inside float32 range; packing an unbounded float64
+# into "f" overflows.
+float32s = floats(allow_nan=False, width=32)

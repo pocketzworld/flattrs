@@ -15,7 +15,7 @@ def _cov(session: nox.Session) -> None:
         session.notify("coverage_report")
 
 
-@nox.session(python=["3.10", "3.11"], tags=["tests"])
+@nox.session(python=["3.10", "3.11", "3.12", "3.13"], tags=["tests"])
 def tests_cov(session: nox.Session) -> None:
     session.install(".[dev]")
 
