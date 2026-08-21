@@ -1,4 +1,4 @@
-from struct import Struct, pack, unpack
+from struct import Struct
 
 from hypothesis import given
 from hypothesis.strategies import booleans, floats
@@ -147,14 +147,12 @@ def test_int64(val):
     assert b1 == b2
 
 
-@given(floats(allow_nan=False))
+@given(floats(allow_nan=False, width=32))
 def test_floats(val):
     sut, oracle = writeFloat32, Struct("<f")
 
     b1 = bytearray(20)
     b2 = bytearray(20)
-
-    val = unpack("f", pack("f", val))[0]
 
     sut(val, b1, 0)
     oracle.pack_into(b2, 0, val)

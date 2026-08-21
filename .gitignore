@@ -104,3 +104,8 @@ venv.bak/
 .mypy_cache/
 
 .vscode
+
+# Cython build artifacts.
+src/flattrs/cflattrs/*.c
+src/flattrs/cflattrs/*.html
+wheelhouse/

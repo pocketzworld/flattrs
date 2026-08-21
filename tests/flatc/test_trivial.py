@@ -1,5 +1,4 @@
 """Test serialization and deserialization of common tables."""
-from struct import pack, unpack
 
 from hypothesis import given
 from hypothesis.strategies import (
@@ -49,7 +48,7 @@ def just_optional_bytes(draw):
 
 @composite
 def just_a_floats(draw):
-    return JustAFloat(unpack("f", pack("f", draw(floats(allow_nan=False))))[0])
+    return JustAFloat(draw(floats(allow_nan=False, width=32)))
 
 
 @composite
