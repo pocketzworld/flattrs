@@ -4,6 +4,21 @@
 Changelog:
 ----------
 
+26.1.1 (2026-08-21)
+~~~~~~~~~~~~~~~~~~~
+* Add ARM64 (``aarch64``) wheels.
+* Build wheels using `cibuildwheel`, and test them on each target architecture.
+
+23.1.0b11 (2026-08-12)
+~~~~~~~~~~~~~~~~~~~~~~
+* Add *musllinux* wheels, so Alpine no longer falls back to pure Python.
+* Stop building a spurious ``py2.py3-none-any`` wheel.
+
+23.1.0b10 (2025-03-30)
+~~~~~~~~~~~~~~~~~~~~~~
+* Add Python 3.12 and 3.13 support.
+* Update Cython to 3.0.12.
+
 23.1.0b9 (2023-05-17)
 ~~~~~~~~~~~~~~~~~~~~~
 * Set the minimum _attrs_ version to ensure we get the right `attrs.resolve_types`.
